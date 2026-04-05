@@ -46,3 +46,5 @@ backend/.venv/
 backend/__pycache__/
 backend/ayuq.db
 backend/data/*.csv
+model.pkl
+backend/diabetes.csv
