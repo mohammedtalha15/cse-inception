@@ -90,7 +90,7 @@ const TIERS: Tier[] = [
       { text: "5s simulator + POST /reading", included: true },
       { text: "Rule + hybrid score view", included: true },
       { text: "24h history strip", included: true },
-      { text: "Gemini explanations", included: false },
+      { text: "Claude explanations", included: false },
       { text: "Multi-patient", included: false },
       { text: "HIPAA / BAA", included: false },
     ],
@@ -104,11 +104,11 @@ const TIERS: Tier[] = [
     price: "149",
     period: "/ month",
     tag: "RECOMMENDED",
-    description: "Alerts, Gemini narratives on high risk, and profile capture for real workflows.",
+    description: "Alerts, Claude narratives on high risk, and profile capture for real workflows.",
     features: [
       { text: "Everything in Observer", included: true },
       { text: "GET /alerts + explain cards", included: true },
-      { text: "Gemini when risk > 60", included: true },
+      { text: "Claude when risk > 60", included: true },
       { text: "POST /profile habits", included: true },
       { text: "Email / webhook hooks", included: true },
       { text: "On-prem option", included: false },
@@ -295,7 +295,7 @@ export function PricingSection() {
             Pick how you run Ayuq
           </h2>
           <p className="font-mono text-xs leading-relaxed text-muted-foreground lg:text-sm">
-            Same core engine — simulator, hybrid risk, optional Gemini layer — packaged for demos,
+            Same core engine — simulator, hybrid risk, optional Claude layer — packaged for demos,
             clinical pilots, or research environments. Adjust copy and endpoints to match your IRB or
             ops review.
           </p>

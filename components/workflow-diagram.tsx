@@ -69,7 +69,7 @@ export function WorkflowDiagram() {
         viewBox="0 0 800 200"
         className="h-auto w-full"
         role="img"
-        aria-label="Pipeline from sensor data to risk score and Gemini explanations"
+        aria-label="Pipeline from sensor data to risk score and Claude explanations"
       >
         {LEFT_LABELS.map((_, i) => {
           const pillX = 56;

@@ -9,7 +9,7 @@ const LOG_LINES = [
   "> Rule engine: base score 35",
   "> ML head: P(hypo) = 0.18 → blended 42",
   "> Risk band: MEDIUM (amber)",
-  "> Threshold check: Gemini explain → pending",
+  "> Threshold check: Claude explain → pending",
   "> Meal gap 220m + insulin active → escalate",
   "> Suggestion: 15g fast carbs within 10 min",
   "> --------- CYCLE COMPLETE ---------",

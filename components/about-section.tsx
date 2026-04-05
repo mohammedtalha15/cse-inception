@@ -46,12 +46,15 @@ function BlinkDot() {
 }
 
 function UptimeCounter() {
-  const [seconds, setSeconds] = useState(
-    () => 86400 + Math.floor(Math.random() * 500000),
-  );
+  const [seconds, setSeconds] = useState<number | null>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => setSeconds((s) => s + 1), 1000);
+    const base = 86400 + Math.floor(Math.random() * 500000);
+    queueMicrotask(() => setSeconds(base));
+    const interval = setInterval(
+      () => setSeconds((s) => (s != null ? s + 1 : s)),
+      1000,
+    );
     return () => clearInterval(interval);
   }, []);
 
@@ -68,7 +71,7 @@ function UptimeCounter() {
       className="font-mono text-[#ea580c]"
       style={{ fontVariantNumeric: "tabular-nums" }}
     >
-      {format(seconds)}
+      {seconds == null ? "0d 00h 00m 00s" : format(seconds)}
     </span>
   );
 }
@@ -211,12 +214,14 @@ export function AboutSection() {
               >
                 <p className="font-mono text-xs leading-relaxed text-muted-foreground lg:text-sm">
                   Ayuq ingests streaming vitals every five seconds: glucose, trend, meal gap, insulin
-                  on board, activity, and time of day. A rule engine captures clinical guardrails, an
-                  optional ML head estimates probability, and the hybrid score surfaces risk before a
-                  low becomes symptomatic.
+                  on board, activity, time of day, and your saved profile habits. The goal is not to
+                  duplicate a late “you are low” buzzer — it is to estimate{" "}
+                  <span className="text-foreground">risk minutes ahead</span> while the number still
+                  looks “okay.” A rule engine encodes guardrails, a demo ML head adds variance, and
+                  the hybrid score drives watch vs alert bands before symptoms.
                 </p>
                 <p className="font-mono text-xs leading-relaxed text-muted-foreground lg:text-sm">
-                  When risk crosses the threshold, Gemini turns the signal into plain language —
+                  When risk crosses the threshold, Claude turns the signal into plain language —
                   what is happening, why it matters, and what to do next. Designed for demos,
                   research, and care teams who need transparency and speed.
                 </p>

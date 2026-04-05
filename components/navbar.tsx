@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_LINKS = [
+  { href: "/#problem", label: "Why Ayuq" },
   { href: "/#product", label: "Product" },
   { href: "/enter-data", label: "Enter Data" },
   { href: "/dashboard", label: "Live Dashboard" },

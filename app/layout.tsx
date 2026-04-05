@@ -13,13 +13,13 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Ayuq — Context-Aware Hypoglycemia Risk Intelligence",
   description:
-    "Real-time hybrid risk scoring (rules + ML), live vitals simulation, and Gemini-powered explanations for hypoglycemia risk before it happens.",
+    "Predictive, context-aware hypoglycemia risk: trend + meals + insulin + activity + profile habits, time-to-threshold estimates, transparent factor scores, and Claude explanations — shifting care from reactive CGM alerts to early intervention.",
   keywords: [
     "hypoglycemia",
     "glucose",
     "diabetes",
     "risk prediction",
-    "Gemini",
+    "Claude",
     "FastAPI",
     "Next.js",
     "explainable AI",
@@ -41,13 +41,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${jetbrainsMono.variable} ${GeistPixelGrid.variable}`}
+      className={`${jetbrainsMono.variable} ${GeistPixelGrid.variable} dark`}
       suppressHydrationWarning
     >
       <body className="min-h-screen font-mono antialiased">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
-          {children}
-        </ThemeProvider>
+        <ThemeProvider defaultTheme="dark">{children}</ThemeProvider>
       </body>
     </html>
   );
