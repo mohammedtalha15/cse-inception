@@ -61,15 +61,15 @@ export function WorkflowDiagram() {
   }
 
   const centerX = 400;
-  const centerY = 100;
+  const centerY = 96;
 
   return (
     <div className="relative mx-auto w-full max-w-[800px]">
       <svg
-        viewBox="0 0 800 200"
+        viewBox="0 0 800 210"
         className="h-auto w-full"
         role="img"
-        aria-label="Pipeline from sensor data to risk score and Claude explanations"
+        aria-label="Pipeline from sensor data to risk score and AI explanations"
       >
         {LEFT_LABELS.map((_, i) => {
           const pillX = 56;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { UtensilsCrossed, Dumbbell, Syringe, RotateCcw } from "lucide-react";
 import { postScenario, fetchSimulatorState } from "@/lib/api";
@@ -19,6 +19,32 @@ export function ScenarioControls({
   const [loading, setLoading] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [local, setLocal] = useState<SimulatorState | null>(null);
+  const [boot, setBoot] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setBoot(true);
+    void (async () => {
+      setErr(null);
+      try {
+        const s = await fetchSimulatorState(patientId);
+        if (!cancelled) {
+          setLocal(s);
+          onState?.(s);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setErr(e instanceof Error ? e.message : "Could not load simulator state");
+        }
+      } finally {
+        if (!cancelled) setBoot(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onState is optional; avoid refetch loops
+  }, [patientId]);
 
   async function act(action: string) {
     setLoading(action);
@@ -107,9 +133,9 @@ export function ScenarioControls({
       >
         End workout
       </motion.button>
-      {st && (
+      {(st || boot) && (
         <pre className="overflow-x-auto border border-border bg-muted/30 p-2 font-mono text-[9px] text-muted-foreground">
-          {JSON.stringify(st, null, 0)}
+          {boot && !st ? "Loading…" : st ? JSON.stringify(st, null, 0) : ""}
         </pre>
       )}
       {err && <p className="font-mono text-[10px] text-red-500">{err}</p>}

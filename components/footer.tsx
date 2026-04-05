@@ -19,7 +19,7 @@ export function Footer() {
       whileInView={{ opacity: 1 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.6, ease }}
-      className="w-full border-t-2 border-foreground px-6 py-8 lg:px-12"
+      className="w-full border-t-2 border-foreground px-6 py-8 pb-28 sm:pb-24 lg:px-12"
     >
       <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
         <div className="flex flex-col gap-1">
@@ -30,7 +30,7 @@ export function Footer() {
             Context-aware hypoglycemia risk intelligence · demo UI
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-6">
+        <div className="flex max-w-full flex-wrap items-center gap-6 pr-14 sm:pr-16 md:pr-20">
           {FOOTER_LINKS.map((link, i) => (
             <motion.div
               key={link.label}

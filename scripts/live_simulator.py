@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 import httpx
 
-BASE = "http://127.0.0.1:8000"
+DEFAULT_API_BASE = "http://127.0.0.1:8000"
 
 
 def bucket_time_of_day(hour: int) -> str:
@@ -32,8 +32,8 @@ def bucket_time_of_day(hour: int) -> str:
     return "night"
 
 
-def fetch_state(client: httpx.Client, patient_id: str) -> dict:
-    r = client.get(f"{BASE}/simulator/{patient_id}", timeout=5.0)
+def fetch_state(client: httpx.Client, base: str, patient_id: str) -> dict:
+    r = client.get(f"{base}/simulator/{patient_id}", timeout=5.0)
     if r.status_code == 404:
         return {}
     r.raise_for_status()
@@ -43,11 +43,10 @@ def fetch_state(client: httpx.Client, patient_id: str) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--patient", default="P001")
-    ap.add_argument("--base", default=BASE)
+    ap.add_argument("--base", default=DEFAULT_API_BASE)
     ap.add_argument("--interval", type=float, default=5.0)
     args = ap.parse_args()
-    global BASE
-    BASE = args.base.rstrip("/")
+    base = args.base.rstrip("/")
 
     g = 110.0
     trend = -0.3
@@ -59,7 +58,7 @@ def main() -> None:
             hour = now.hour
             tod = bucket_time_of_day(hour)
             try:
-                st = fetch_state(client, args.patient)
+                st = fetch_state(client, base, args.patient)
             except Exception:
                 st = {}
 
@@ -98,7 +97,7 @@ def main() -> None:
             }
 
             try:
-                r = client.post(f"{BASE}/reading", json=body, timeout=10.0)
+                r = client.post(f"{base}/reading", json=body, timeout=10.0)
                 r.raise_for_status()
                 out = r.json()
                 print(

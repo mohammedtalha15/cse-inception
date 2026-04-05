@@ -61,8 +61,8 @@ export function AlertsView() {
               <p className="mt-2 font-mono text-xs leading-relaxed text-muted-foreground">
                 High-risk events from <code className="text-foreground">GET /alerts/{"{id}"}</code>.
                 When hybrid risk &gt; 60, the API stores a narrative from{" "}
-                <span className="text-foreground">Claude</span> (or a calm fallback if{" "}
-                <code className="text-accent">ANTHROPIC_API_KEY</code> is unset).
+                <span className="text-foreground">Gemini</span> (or built-in guidance if{" "}
+                <code className="text-accent">GEMINI_API_KEY</code> is unset).
               </p>
             </div>
             <Sparkles className="h-8 w-8 shrink-0 text-accent" strokeWidth={1.25} />

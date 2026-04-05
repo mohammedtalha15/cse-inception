@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import traceback
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -19,6 +20,7 @@ _REPO_ROOT = _BACKEND_DIR.parent
 
 load_dotenv(_REPO_ROOT / ".env")
 load_dotenv(_BACKEND_DIR / ".env")
+load_dotenv(_REPO_ROOT / ".env.local")
 
 
 def _normalize_database_url(url: str) -> str:
@@ -52,6 +54,12 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def norm_path_patient_id(patient_id: str) -> str:
+    """Match dashboard IDs (P001) even if the URL used p001."""
+    s = (patient_id or "").strip().upper()
+    return s if s else "P001"
 
 
 def unpack_factors(fac) -> tuple[list, float | None]:
@@ -88,80 +96,94 @@ def row_to_reading_out(row: ReadingRow) -> ReadingOut:
 
 @app.post("/reading", response_model=ReadingOut)
 def post_reading(body: ReadingIn, db: Session = Depends(get_db)):
-    ts = body.timestamp or datetime.now(timezone.utc)
-    if ts.tzinfo is None:
-        ts = ts.replace(tzinfo=timezone.utc)
+    try:
+        ts = body.timestamp or datetime.now(timezone.utc)
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
 
-    payload = body.model_dump()
-    payload["timestamp"] = ts
+        payload = body.model_dump()
+        payload["timestamp"] = ts
 
-    profile_row = db.get(ProfileRow, body.patient_id)
-    profile_data = profile_row.data_json if profile_row else None
+        profile_row = db.get(ProfileRow, body.patient_id)
+        profile_data = profile_row.data_json if profile_row else None
 
-    detail = compute_risk_detailed(payload, profile_data)
-    factors = detail["factors"]
-    ttl = detail.get("time_to_low_minutes")
-    factors_store = {"items": factors, "_ttl": ttl}
+        detail = compute_risk_detailed(payload, profile_data)
+        factors = detail["factors"]
+        ttl = detail.get("time_to_low_minutes")
+        factors_store = {"items": factors, "_ttl": ttl}
 
-    explanation = None
-    if detail["hybrid_score"] > 60:
-        explanation = generate_explanation(payload, detail["hybrid_score"], factors)
-        db.add(
-            AlertRow(
-                timestamp=ts,
-                patient_id=body.patient_id,
-                hybrid_score=detail["hybrid_score"],
-                explanation=explanation,
-                reading_snapshot=payload,
+        explanation = None
+        if detail["hybrid_score"] > 60:
+            explanation = generate_explanation(
+                payload, detail["hybrid_score"], factors
             )
+            db.add(
+                AlertRow(
+                    timestamp=ts,
+                    patient_id=body.patient_id,
+                    hybrid_score=detail["hybrid_score"],
+                    explanation=explanation,
+                    reading_snapshot=payload,
+                )
+            )
+
+        row = ReadingRow(
+            timestamp=ts,
+            patient_id=body.patient_id,
+            glucose_mgdl=body.glucose_mgdl,
+            glucose_trend=body.glucose_trend,
+            last_meal_mins_ago=body.last_meal_mins_ago,
+            meal_carbs_g=body.meal_carbs_g,
+            last_insulin_units=body.last_insulin_units,
+            insulin_mins_ago=body.insulin_mins_ago,
+            activity_level=body.activity_level,
+            time_of_day=body.time_of_day,
+            rule_score=detail["rule_score"],
+            ml_score=detail["ml_score"],
+            hybrid_score=detail["hybrid_score"],
+            factors_json=factors_store,
+            explanation=explanation,
+            alert_type=detail["alert_type"],
         )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
 
-    row = ReadingRow(
-        timestamp=ts,
-        patient_id=body.patient_id,
-        glucose_mgdl=body.glucose_mgdl,
-        glucose_trend=body.glucose_trend,
-        last_meal_mins_ago=body.last_meal_mins_ago,
-        meal_carbs_g=body.meal_carbs_g,
-        last_insulin_units=body.last_insulin_units,
-        insulin_mins_ago=body.insulin_mins_ago,
-        activity_level=body.activity_level,
-        time_of_day=body.time_of_day,
-        rule_score=detail["rule_score"],
-        ml_score=detail["ml_score"],
-        hybrid_score=detail["hybrid_score"],
-        factors_json=factors_store,
-        explanation=explanation,
-        alert_type=detail["alert_type"],
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-
-    return ReadingOut(
-        id=row.id,
-        timestamp=row.timestamp,
-        patient_id=row.patient_id,
-        glucose_mgdl=row.glucose_mgdl,
-        glucose_trend=row.glucose_trend,
-        last_meal_mins_ago=row.last_meal_mins_ago,
-        meal_carbs_g=row.meal_carbs_g,
-        last_insulin_units=row.last_insulin_units,
-        insulin_mins_ago=row.insulin_mins_ago,
-        activity_level=row.activity_level,
-        time_of_day=row.time_of_day,
-        rule_score=row.rule_score,
-        ml_score=row.ml_score,
-        hybrid_score=row.hybrid_score,
-        factors=factors,
-        explanation=explanation,
-        alert_type=detail["alert_type"],
-        time_to_low_minutes=ttl,
-    )
+        return ReadingOut(
+            id=row.id,
+            timestamp=row.timestamp,
+            patient_id=row.patient_id,
+            glucose_mgdl=row.glucose_mgdl,
+            glucose_trend=row.glucose_trend,
+            last_meal_mins_ago=row.last_meal_mins_ago,
+            meal_carbs_g=row.meal_carbs_g,
+            last_insulin_units=row.last_insulin_units,
+            insulin_mins_ago=row.insulin_mins_ago,
+            activity_level=row.activity_level,
+            time_of_day=row.time_of_day,
+            rule_score=row.rule_score,
+            ml_score=row.ml_score,
+            hybrid_score=row.hybrid_score,
+            factors=factors,
+            explanation=explanation,
+            alert_type=detail["alert_type"],
+            time_to_low_minutes=ttl,
+        )
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=str(e) or type(e).__name__,
+        ) from e
 
 
 @app.get("/readings/{patient_id}", response_model=list[ReadingOut])
 def get_readings(patient_id: str, hours: int = 24, db: Session = Depends(get_db)):
+    patient_id = norm_path_patient_id(patient_id)
     since = datetime.now(timezone.utc) - timedelta(hours=hours)
     rows = (
         db.query(ReadingRow)
@@ -174,6 +196,7 @@ def get_readings(patient_id: str, hours: int = 24, db: Session = Depends(get_db)
 
 @app.get("/readings/{patient_id}/latest", response_model=ReadingOut | None)
 def get_latest(patient_id: str, db: Session = Depends(get_db)):
+    patient_id = norm_path_patient_id(patient_id)
     row = (
         db.query(ReadingRow)
         .filter(ReadingRow.patient_id == patient_id)
@@ -185,6 +208,7 @@ def get_latest(patient_id: str, db: Session = Depends(get_db)):
 
 @app.get("/alerts/{patient_id}", response_model=list[AlertOut])
 def get_alerts(patient_id: str, db: Session = Depends(get_db)):
+    patient_id = norm_path_patient_id(patient_id)
     rows = (
         db.query(AlertRow)
         .filter(AlertRow.patient_id == patient_id)
@@ -222,6 +246,7 @@ def post_profile(body: ProfileIn, db: Session = Depends(get_db)):
 
 @app.get("/profile/{patient_id}")
 def get_profile(patient_id: str, db: Session = Depends(get_db)):
+    patient_id = norm_path_patient_id(patient_id)
     row = db.get(ProfileRow, patient_id)
     if not row:
         raise HTTPException(404, "No profile")
@@ -230,6 +255,7 @@ def get_profile(patient_id: str, db: Session = Depends(get_db)):
 
 @app.get("/simulator/{patient_id}")
 def get_sim_state(patient_id: str, db: Session = Depends(get_db)):
+    patient_id = norm_path_patient_id(patient_id)
     row = db.get(SimulatorStateRow, patient_id)
     if not row:
         return {
@@ -248,35 +274,47 @@ def get_sim_state(patient_id: str, db: Session = Depends(get_db)):
 
 @app.post("/simulator/{patient_id}")
 def post_sim_scenario(patient_id: str, body: ScenarioAction, db: Session = Depends(get_db)):
-    row = db.get(SimulatorStateRow, patient_id)
-    if not row:
-        row = SimulatorStateRow(patient_id=patient_id)
-        db.add(row)
-        db.flush()
+    patient_id = norm_path_patient_id(patient_id)
+    try:
+        row = db.get(SimulatorStateRow, patient_id)
+        if not row:
+            row = SimulatorStateRow(patient_id=patient_id)
+            db.add(row)
+            db.flush()
 
-    if body.action == "skip_meal":
-        row.skip_meal_boost_mins = min(360, row.skip_meal_boost_mins + 120)
-    elif body.action == "start_workout":
-        row.workout_active = True
-    elif body.action == "end_workout":
-        row.workout_active = False
-    elif body.action == "add_insulin":
-        row.extra_insulin_units = min(20.0, row.extra_insulin_units + 3.0)
-    elif body.action == "reset":
-        row.skip_meal_boost_mins = 0
-        row.workout_active = False
-        row.extra_insulin_units = 0.0
-    else:
-        raise HTTPException(400, "Unknown action")
+        if body.action == "skip_meal":
+            row.skip_meal_boost_mins = min(360, row.skip_meal_boost_mins + 120)
+        elif body.action == "start_workout":
+            row.workout_active = True
+        elif body.action == "end_workout":
+            row.workout_active = False
+        elif body.action == "add_insulin":
+            row.extra_insulin_units = min(20.0, row.extra_insulin_units + 3.0)
+        elif body.action == "reset":
+            row.skip_meal_boost_mins = 0
+            row.workout_active = False
+            row.extra_insulin_units = 0.0
+        else:
+            raise HTTPException(400, "Unknown action")
 
-    db.commit()
-    db.refresh(row)
-    return {
-        "ok": True,
-        "state": {
-            "patient_id": row.patient_id,
-            "skip_meal_boost_mins": row.skip_meal_boost_mins,
-            "workout_active": row.workout_active,
-            "extra_insulin_units": row.extra_insulin_units,
-        },
-    }
+        db.commit()
+        db.refresh(row)
+        return {
+            "ok": True,
+            "state": {
+                "patient_id": row.patient_id,
+                "skip_meal_boost_mins": row.skip_meal_boost_mins,
+                "workout_active": row.workout_active,
+                "extra_insulin_units": row.extra_insulin_units,
+            },
+        }
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=str(e) or type(e).__name__,
+        ) from e

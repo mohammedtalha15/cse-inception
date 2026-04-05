@@ -221,7 +221,7 @@ export function AboutSection() {
                   the hybrid score drives watch vs alert bands before symptoms.
                 </p>
                 <p className="font-mono text-xs leading-relaxed text-muted-foreground lg:text-sm">
-                  When risk crosses the threshold, Claude turns the signal into plain language —
+                  When risk crosses the threshold, Gemini turns the signal into plain language —
                   what is happening, why it matters, and what to do next. Designed for demos,
                   research, and care teams who need transparency and speed.
                 </p>

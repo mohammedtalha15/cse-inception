@@ -55,7 +55,7 @@ const SOLUTIONS = [
   {
     icon: MessageCircle,
     title: "Actionable language",
-    body: "Above the alert line, Claude turns the signal into calm, short guidance — not jargon.",
+    body: "Above the alert line, Gemini turns the signal into calm, short guidance — not jargon.",
   },
 ] as const;
 

@@ -24,7 +24,7 @@ export function HeroSection() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, delay: 0.15, ease }}
-          className="my-4 w-full max-w-2xl lg:my-6"
+          className="my-4 w-full max-w-2xl overflow-hidden px-1 pb-2 lg:my-6 lg:px-2 lg:pb-4"
         >
           <WorkflowDiagram />
         </motion.div>
@@ -49,7 +49,7 @@ export function HeroSection() {
           thresholds to <strong className="text-foreground">predictive, context-aware</strong>{" "}
           intelligence: trend, meals, insulin, activity, time of day — plus your saved habits — so
           risk surfaces <strong className="text-accent">before</strong> a low, with factor-by-factor
-          transparency and Claude explanations when escalation matters.
+          transparency and Gemini explanations when escalation matters.
         </motion.p>
 
         <motion.div

@@ -85,7 +85,7 @@ export function ProfileForm() {
           Saved habits feed the <strong className="text-foreground">risk engine</strong> on each{" "}
           <code className="text-accent">POST /reading</code> — e.g. sleep window, training pattern,
           lunch timing, and rapid insulin type can add explainable points when they amplify risk.
-          Claude prompts can use the same profile for calmer, more personal narratives.
+          The AI layer can use the same profile for calmer, more personal narratives.
         </p>
 
         <form onSubmit={onSubmit} className="space-y-6 border-2 border-foreground bg-card p-6">

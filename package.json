@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev:free": "bash -c 'lsof -t -i:8000 | xargs kill -9 2>/dev/null; exit 0'",
+    "dev": "npm run dev:free && concurrently -n web,api -c cyan,magenta -k \"next dev\" \"bash backend/run-api.sh\"",
+    "dev:web": "next dev",
+    "dev:api": "bash backend/run-api.sh",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -27,6 +30,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "tailwindcss": "^4",

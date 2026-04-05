@@ -1,9 +1,11 @@
-"""Claude explanation when risk is high; calm fallback without API key."""
+"""Gemini explanation when risk is high; calm fallback without API key."""
 
 from __future__ import annotations
 
 import os
 from typing import Any
+
+import httpx
 
 
 def fallback_explanation(reading: dict[str, Any], hybrid: int, factors: list[dict]) -> str:
@@ -22,17 +24,89 @@ def fallback_explanation(reading: dict[str, Any], hybrid: int, factors: list[dic
     return " ".join(parts)
 
 
+def _gemini_key() -> str:
+    return (
+        os.environ.get("GEMINI_API_KEY", "").strip()
+        or os.environ.get("GOOGLE_API_KEY", "").strip()
+    )
+
+
+def _normalize_api_key(raw: str) -> str:
+    s = raw.strip()
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in "\"'":
+        s = s[1:-1].strip()
+    return s
+
+
+def _invalid_api_key_response(resp: httpx.Response) -> bool:
+    try:
+        j = resp.json()
+        err = j.get("error") or {}
+        for d in err.get("details") or []:
+            if isinstance(d, dict) and d.get("reason") == "API_KEY_INVALID":
+                return True
+        msg = str(err.get("message", "")).lower()
+        return "api key not valid" in msg or "invalid api key" in msg
+    except Exception:
+        return False
+
+
+def _norm_model(name: str) -> str:
+    m = name.strip()
+    if m.startswith("models/"):
+        return m[len("models/") :]
+    return m
+
+
+def _should_try_next_model(resp: httpx.Response) -> bool:
+    if resp.status_code == 429:
+        return True
+    if resp.status_code == 404:
+        return True
+    try:
+        j = resp.json()
+        err = j.get("error") or {}
+        msg = str(err.get("message", "")).lower()
+        st = str(err.get("status", "")).upper()
+        if (
+            "quota" in msg
+            or "resource exhausted" in msg
+            or st == "RESOURCE_EXHAUSTED"
+            or "rate limit" in msg
+        ):
+            return True
+        if (
+            "not found for api version" in msg
+            or "not supported for generatecontent" in msg
+            or "is not found" in msg
+        ):
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _extract_text(data: dict[str, Any]) -> str:
+    candidates = data.get("candidates") or []
+    if not candidates:
+        return ""
+    parts = (candidates[0].get("content") or {}).get("parts") or []
+    texts = [p.get("text", "") for p in parts if isinstance(p, dict)]
+    return "".join(texts).strip()
+
+
 def generate_explanation(reading: dict[str, Any], hybrid: int, factors: list[dict]) -> str:
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    api_key = _normalize_api_key(_gemini_key())
     if not api_key:
         return fallback_explanation(reading, hybrid, factors)
 
-    try:
-        import anthropic
+    primary = _norm_model(os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"))
+    fb_raw = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash-lite").strip()
+    fallback = _norm_model(fb_raw) if fb_raw else ""
+    models = [primary] if primary == fallback else [primary, fallback]
 
-        client = anthropic.Anthropic(api_key=api_key)
-        factor_lines = "\n".join(f"- {f['label']}: +{f['points']}" for f in factors[:8])
-        prompt = f"""A diabetic patient's glucose monitoring data shows:
+    factor_lines = "\n".join(f"- {f['label']}: +{f['points']}" for f in factors[:8])
+    prompt = f"""A diabetic patient's glucose monitoring data shows:
 - Current glucose: {reading['glucose_mgdl']} mg/dL
 - Trend: {reading['glucose_trend']} mg/dL per minute
 - Last insulin: {reading['insulin_mins_ago']} minutes ago ({reading['last_insulin_units']} units)
@@ -46,14 +120,37 @@ Contributing factors:
 
 In exactly 2 short sentences, explain clearly to the patient why hypoglycemia risk is elevated right now and what they should do. Use simple, calm language. No medical jargon."""
 
-        message = client.messages.create(
-            model=os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
-            max_tokens=200,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        block = message.content[0]
-        if block.type == "text":
-            return block.text.strip()
+    payload: dict[str, Any] = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "maxOutputTokens": 200,
+            "temperature": 0.4,
+        },
+    }
+
+    url_tpl = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent"
+
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            for i, model in enumerate(models):
+                r = client.post(
+                    url_tpl.format(model),
+                    params={"key": api_key},
+                    json=payload,
+                )
+                if r.is_success:
+                    data = r.json()
+                    out = _extract_text(data)
+                    if out:
+                        return out
+                    return fallback_explanation(reading, hybrid, factors)
+
+                if _invalid_api_key_response(r):
+                    break
+
+                if _should_try_next_model(r) and i < len(models) - 1:
+                    continue
+                break
     except Exception:
         pass
     return fallback_explanation(reading, hybrid, factors)

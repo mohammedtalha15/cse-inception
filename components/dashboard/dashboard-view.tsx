@@ -96,6 +96,7 @@ export function DashboardView() {
   const [readings, setReadings] = useState<Reading[]>([]);
   const [live, setLive] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [lastFetchAt, setLastFetchAt] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
     let savedProfile: ProfileContext = null;
@@ -107,11 +108,12 @@ export function DashboardView() {
     }
     try {
       const [list, latest] = await Promise.all([
-        fetchReadings(patientId, 6),
+        fetchReadings(patientId, 72),
         fetchLatest(patientId),
       ]);
       setApiError(null);
       setLive(true);
+      setLastFetchAt(new Date());
       if (list.length > 0) {
         setReadings(list);
       } else if (latest) {
@@ -121,6 +123,7 @@ export function DashboardView() {
       }
     } catch {
       setLive(false);
+      setLastFetchAt(new Date());
       setApiError("API unreachable — showing deterministic mock stream.");
       setReadings(buildMockSeries(patientId, savedProfile));
     }
@@ -141,19 +144,22 @@ export function DashboardView() {
     )[0];
   }, [readings]);
 
-  const hybrid = latest?.hybrid_score ?? 0;
+  const hasReadings = readings.length > 0;
+  const hybrid = hasReadings ? (latest?.hybrid_score ?? 0) : null;
   const ttl = latest?.time_to_low_minutes ?? null;
   const ttlLabel = formatTtl(ttl);
   const preventiveWindow =
+    hasReadings &&
     ttl != null &&
     Number.isFinite(ttl) &&
     ttl > 0 &&
     ttl <= 45 &&
     (latest?.glucose_mgdl ?? 0) > 70 &&
+    hybrid != null &&
     hybrid < 65;
 
   return (
-    <RiskShell hybridScore={hybrid}>
+    <RiskShell hybridScore={hybrid ?? 0}>
       <div className="min-h-screen dot-grid-bg pb-20">
         <header className="mx-auto max-w-6xl px-6 pt-8 lg:px-12">
           <Link
@@ -173,10 +179,17 @@ export function DashboardView() {
                   Live dashboard
                 </h1>
                 <p className="mt-1 max-w-xl font-mono text-xs leading-relaxed text-muted-foreground">
-                  Predictive view: trend + context + hybrid score, minutes-to-threshold, and factor
-                  breakdown — not just a late glucose alarm. Polls{" "}
-                  <span className="text-foreground">GET /readings</span> every 5s. Profile habits feed
-                  the API risk engine when saved under <span className="text-foreground">/profile</span>.
+                  Trend, meals, insulin, activity, and hybrid risk — with minutes-to-threshold and
+                  factor breakdown. Updates about every 5 seconds.
+                  <span className="mt-2 block text-[10px] text-foreground/90">
+                    Active patient: <strong className="text-foreground">{patientId}</strong> — use
+                    the same ID when you log vitals so new readings show here.
+                  </span>
+                  {lastFetchAt && (
+                    <span className="mt-1 block text-[10px] text-muted-foreground/90">
+                      Last refresh: {lastFetchAt.toLocaleTimeString()}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -206,6 +219,17 @@ export function DashboardView() {
               {apiError}
             </p>
           )}
+          {live && !hasReadings && !apiError && (
+            <p className="mt-3 border border-border bg-muted/40 p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+              <span className="text-foreground">No readings in the database for {patientId}</span>{" "}
+              in the last 72 hours — gauges stay empty until the first save. Use{" "}
+              <Link href="/enter-data" className="text-accent underline underline-offset-2">
+                Log vitals
+              </Link>{" "}
+              with that patient ID (case is normalized to P001-style), then wait for the next refresh
+              (~5s). If you already submitted, check the API terminal for errors or DB connection.
+            </p>
+          )}
         </header>
 
         <main className="mx-auto max-w-6xl space-y-6 px-6 py-10 lg:px-12">
@@ -213,8 +237,8 @@ export function DashboardView() {
             <div className="space-y-4 lg:col-span-2">
               <RiskMeter score={hybrid} />
               <DualAiStrip
-                rule={latest?.rule_score ?? 0}
-                ml={latest?.ml_score ?? 0}
+                rule={hasReadings ? (latest?.rule_score ?? null) : null}
+                ml={hasReadings ? (latest?.ml_score ?? null) : null}
                 hybrid={hybrid}
               />
               <motion.div
@@ -265,7 +289,9 @@ export function DashboardView() {
                       "Critical band — confirm symptoms, treat per plan, and involve your care team if needed."}
                     {latest?.alert_type === "early" &&
                       "Early warning — watch closely, consider carbs if trending down."}
-                    {(!latest || latest.alert_type === "stable") &&
+                    {!latest &&
+                      "No reading loaded — submit vitals for this patient to see alert band."}
+                    {latest && latest.alert_type === "stable" &&
                       "Stable band — maintain routine monitoring."}
                   </p>
                 </div>
@@ -275,7 +301,7 @@ export function DashboardView() {
               <div className="border-2 border-foreground bg-card p-4">
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    Glucose · last 6h + forecast
+                    Glucose · last 72h + forecast
                   </p>
                   <Link
                     href="/alerts"

@@ -3,7 +3,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+def _normalize_patient_id(v: object) -> str:
+    if v is None or (isinstance(v, str) and not v.strip()):
+        return "P001"
+    return str(v).strip().upper()
 
 
 class ReadingIn(BaseModel):
@@ -17,6 +23,11 @@ class ReadingIn(BaseModel):
     activity_level: str
     time_of_day: str
     patient_id: str = "P001"
+
+    @field_validator("patient_id", mode="before")
+    @classmethod
+    def patient_id_upper(cls, v: object) -> str:
+        return _normalize_patient_id(v)
 
 
 class ReadingOut(BaseModel):
@@ -45,6 +56,11 @@ class ReadingOut(BaseModel):
 
 class ProfileIn(BaseModel):
     patient_id: str = "P001"
+
+    @field_validator("patient_id", mode="before")
+    @classmethod
+    def profile_patient_id_upper(cls, v: object) -> str:
+        return _normalize_patient_id(v)
     typical_breakfast_time: str | None = None
     typical_lunch_time: str | None = None
     typical_dinner_time: str | None = None

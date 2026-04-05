@@ -4,11 +4,12 @@ import Link from "next/link";
 import { Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { GoogleAuthButton } from "@/components/google-auth-button";
 
 const NAV_LINKS = [
   { href: "/#problem", label: "Why Ayuq" },
   { href: "/#product", label: "Product" },
-  { href: "/enter-data", label: "Enter Data" },
+  { href: "/enter-data", label: "Log vitals" },
   { href: "/dashboard", label: "Live Dashboard" },
   { href: "/alerts", label: "Alerts & AI" },
   { href: "/profile", label: "Profile" },
@@ -68,12 +69,9 @@ export function Navbar() {
             className="flex shrink-0 items-center gap-3 lg:gap-4"
           >
             <ThemeToggle />
-            <Link
-              href="/dashboard"
-              className="hidden text-xs font-mono uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground sm:block"
-            >
-              Sign In
-            </Link>
+            <div className="hidden sm:block">
+              <GoogleAuthButton />
+            </div>
             <Link href="/enter-data">
               <motion.span
                 whileHover={{ scale: 1.02 }}
@@ -86,7 +84,7 @@ export function Navbar() {
           </motion.div>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 border-t border-border/50 pt-3 md:hidden">
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/50 pt-3 md:hidden">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -96,6 +94,7 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
+          <GoogleAuthButton />
         </div>
       </nav>
     </motion.div>

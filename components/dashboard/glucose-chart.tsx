@@ -77,101 +77,112 @@ export function GlucoseChart({ readings }: { readings: Reading[] }) {
   if (readings.length === 0) {
     return (
       <div className="flex h-[280px] items-center justify-center border-2 border-dashed border-border bg-muted/20 font-mono text-xs text-muted-foreground">
-        No samples yet — start the live simulator or POST /reading.
+        No samples yet — log vitals for this patient or use the live stream.
       </div>
     );
   }
 
   return (
-    <div className="h-[300px] w-full min-w-0">
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="4 6" vertical={false} />
-          <XAxis
-            dataKey="label"
-            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 9 }}
-            tickLine={false}
-            axisLine={{ stroke: "hsl(var(--border))" }}
-            interval="preserveStartEnd"
-          />
-          <YAxis
-            domain={["dataMin - 12", "dataMax + 12"]}
-            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 9 }}
-            tickLine={false}
-            axisLine={{ stroke: "hsl(var(--border))" }}
-            width={36}
-            label={{
-              value: "mg/dL",
-              angle: -90,
-              position: "insideLeft",
-              style: { fill: "hsl(var(--muted-foreground))", fontSize: 9 },
-            }}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "hsl(var(--card))",
-              border: "2px solid hsl(var(--foreground))",
-              fontFamily: "var(--font-mono), monospace",
-              fontSize: 11,
-            }}
-            formatter={(v) => {
-              const n = typeof v === "number" ? v : Number(v);
-              return Number.isFinite(n) ? `${Math.round(n)} mg/dL` : "";
-            }}
-            labelFormatter={(l) => l}
-          />
-          <Line
-            type="monotone"
-            dataKey="gSafe"
-            stroke="#22c55e"
-            strokeWidth={2.5}
-            dot={false}
-            connectNulls
-            isAnimationActive={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="gWatch"
-            stroke="#f59e0b"
-            strokeWidth={2.5}
-            dot={false}
-            connectNulls
-            isAnimationActive={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="gAlert"
-            stroke="#ef4444"
-            strokeWidth={2.5}
-            dot={false}
-            connectNulls
-            isAnimationActive={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="gFuture"
-            stroke="hsl(var(--accent))"
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            dot={false}
-            connectNulls
-            isAnimationActive={false}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
-      <div className="mt-2 flex flex-wrap gap-4 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-4 bg-green-500" /> Safe
+    <div className="w-full min-w-0">
+      <div className="relative h-[300px] w-full min-w-0">
+        <span
+          className="pointer-events-none absolute left-0 top-1/2 z-[1] -translate-y-1/2 pl-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground"
+          style={{ writingMode: "vertical-rl", transform: "translateY(-50%) rotate(180deg)" }}
+          aria-hidden
+        >
+          mg/dL
         </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-4 bg-amber-500" /> Watch
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-4 bg-red-500" /> Alert
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-0.5 w-4 border-t-2 border-dashed border-accent" /> Forecast
-        </span>
+        <div className="h-full w-full pl-7">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart
+              data={data}
+              margin={{ top: 10, right: 10, left: 4, bottom: 4 }}
+            >
+              <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="4 6" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 9 }}
+                tickLine={false}
+                axisLine={{ stroke: "hsl(var(--border))" }}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                domain={["dataMin - 12", "dataMax + 12"]}
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 9 }}
+                tickLine={false}
+                axisLine={{ stroke: "hsl(var(--border))" }}
+                width={44}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: "hsl(var(--card))",
+                  border: "2px solid hsl(var(--foreground))",
+                  fontFamily: "var(--font-mono), monospace",
+                  fontSize: 11,
+                }}
+                formatter={(v) => {
+                  const n = typeof v === "number" ? v : Number(v);
+                  return Number.isFinite(n) ? `${Math.round(n)} mg/dL` : "";
+                }}
+                labelFormatter={(l) => l}
+              />
+              <Line
+                type="monotone"
+                dataKey="gSafe"
+                stroke="#22c55e"
+                strokeWidth={2.5}
+                dot={false}
+                connectNulls
+                isAnimationActive={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="gWatch"
+                stroke="#f59e0b"
+                strokeWidth={2.5}
+                dot={false}
+                connectNulls
+                isAnimationActive={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="gAlert"
+                stroke="#ef4444"
+                strokeWidth={2.5}
+                dot={false}
+                connectNulls
+                isAnimationActive={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="gFuture"
+                stroke="hsl(var(--accent))"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={false}
+                connectNulls
+                isAnimationActive={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+      <div className="relative z-10 mt-3 border-t border-border bg-background pt-3">
+        <div className="flex flex-wrap gap-x-5 gap-y-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-4 shrink-0 bg-green-500" /> Safe
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-4 shrink-0 bg-amber-500" /> Watch
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-4 shrink-0 bg-red-500" /> Alert
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-0.5 w-4 shrink-0 border-t-2 border-dashed border-accent" />{" "}
+            Forecast
+          </span>
+        </div>
       </div>
     </div>
   );

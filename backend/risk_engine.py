@@ -19,7 +19,10 @@ def _djb2(s: str) -> int:
 
 
 def ml_stub_score(patient_id: str, glucose_mgdl: float, rule_score: int) -> int:
-    """Deterministic pseudo-ML head for demo hybrid display."""
+    """
+    Deterministic pseudo-ML head for hybrid display — not a trained XGBoost/PKL model.
+    A real learned model would load weights here and map the same reading features to a score.
+    """
     key = f"{patient_id}:{round(glucose_mgdl, 1)}"
     h = _djb2(key)
     jitter = (h % 19) - 9
