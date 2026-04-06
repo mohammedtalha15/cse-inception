@@ -122,6 +122,8 @@ def profile_context_factors(reading: Dict[str, Any], profile: Dict[str, Any]) ->
 def compute_risk_detailed(
     reading: Dict[str, Any],
     profile: Optional[Dict[str, Any]] = None,
+    ml_model: Any = None,
+    ml_scaler: Any = None,
 ) -> Dict[str, Any]:
     score = 0
     factors: List[RiskFactor] = []
@@ -191,10 +193,45 @@ def compute_risk_detailed(
         for f in pf:
             score += f["points"]
             factors.append(f)
+    else:
+        profile = {}
 
     rule_score = min(score, 100)
     patient_id = str(reading.get("patient_id", "P001"))
-    ml = ml_stub_score(patient_id, g, rule_score)
+    
+    # ML Score generation via RF model instead of stub
+    ml = None
+    if ml_model and ml_scaler:
+        import numpy as np
+        try:
+            # Map features: [pregnancies, glucose, bp, skin, insulin, bmi, dpf, age]
+            input_features = [
+                float(profile.get("pregnancies", 0)),
+                float(reading.get("glucose_mgdl", 100)),
+                float(profile.get("blood_pressure", 72)),
+                float(profile.get("skin_thickness", 20)),
+                float(reading.get("last_insulin_units", 0)),
+                float(profile.get("bmi", 25.0)),
+                float(profile.get("dpf", 0.5)),
+                float(profile.get("age", 35))
+            ]
+            input_data = np.array(input_features).reshape(1, -1)
+            scaled_input = ml_scaler.transform(input_data)
+            
+            probabilities = ml_model.predict_proba(scaled_input)[0]
+            probability = float(probabilities[1]) if len(probabilities) > 1 else 0.0
+            
+            # Probability returned by model mapped cleanly to the UI ML score out of 100
+            ml = int(probability * 100)
+            
+            import warnings
+            warnings.filterwarnings("ignore", category=UserWarning) # Suppress feature name warnings
+        except Exception as e:
+            print(f"Warning: ML pipeline mapping failed, using stub: {e}")
+            
+    if ml is None:
+        ml = ml_stub_score(patient_id, g, rule_score)
+        
     hybrid = hybrid_score(rule_score, ml)
 
     return {

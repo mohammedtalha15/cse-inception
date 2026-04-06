@@ -176,7 +176,7 @@ def post_reading(body: ReadingIn, db: Session = Depends(get_db)):
         if profile_row and isinstance(profile_row.data_json, dict):
             profile_data = profile_row.data_json
 
-        detail = compute_risk_detailed(payload, profile_data)
+        detail = compute_risk_detailed(payload, profile_data, _ML_MODEL, _ML_SCALER)
         factors = detail["factors"]
         ttl = _finite_float_or_none(detail.get("time_to_low_minutes"))
         factors_store = {"items": factors, "_ttl": ttl}
