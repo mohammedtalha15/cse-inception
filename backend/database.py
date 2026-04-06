@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
@@ -27,9 +26,9 @@ class ReadingRow(Base):
     rule_score: Mapped[int] = mapped_column(Integer)
     ml_score: Mapped[int] = mapped_column(Integer)
     hybrid_score: Mapped[int] = mapped_column(Integer)
-    factors_json: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
-    alert_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    factors_json: Mapped[Optional[List[Any]]] = mapped_column(JSON, nullable=True)
+    explanation: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    alert_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
 
 
 class AlertRow(Base):
@@ -40,14 +39,14 @@ class AlertRow(Base):
     patient_id: Mapped[str] = mapped_column(String(32), index=True)
     hybrid_score: Mapped[int] = mapped_column(Integer)
     explanation: Mapped[str] = mapped_column(Text)
-    reading_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    reading_snapshot: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
 
 
 class ProfileRow(Base):
     __tablename__ = "profiles"
 
     patient_id: Mapped[str] = mapped_column(String(32), primary_key=True)
-    data_json: Mapped[dict] = mapped_column(JSON)
+    data_json: Mapped[Dict[str, Any]] = mapped_column(JSON)
     updated_at: Mapped[datetime] = mapped_column(DateTime)
 
 

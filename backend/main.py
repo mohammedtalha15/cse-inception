@@ -4,7 +4,7 @@ import math
 import os
 import traceback
 from datetime import date, datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -86,7 +86,7 @@ def get_db():
         db.close()
 
 
-def _finite_float_or_none(value: Any) -> float | None:
+def _finite_float_or_none(value: Any) -> Optional[float]:
     """Postgres JSON rejects NaN/Inf; numpy scalars may appear from ML paths."""
     if value is None:
         return None
@@ -99,9 +99,9 @@ def _finite_float_or_none(value: Any) -> float | None:
     return x
 
 
-def json_safe_reading_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
+def json_safe_reading_snapshot(payload: Dict[str, Any]) -> Dict[str, Any]:
     """JSON columns (e.g. Postgres) cannot store datetime objects — use ISO strings."""
-    out: dict[str, Any] = {}
+    out: Dict[str, Any] = {}
     for k, v in payload.items():
         if isinstance(v, datetime):
             out[k] = v.isoformat()
@@ -118,7 +118,7 @@ def norm_path_patient_id(patient_id: str) -> str:
     return s if s else "P001"
 
 
-def unpack_factors(fac) -> tuple[list, float | None]:
+def unpack_factors(fac) -> Tuple[List[Any], Optional[float]]:
     if isinstance(fac, dict) and "items" in fac:
         raw = fac["items"]
         return (raw if isinstance(raw, list) else []), fac.get("_ttl")
@@ -127,8 +127,8 @@ def unpack_factors(fac) -> tuple[list, float | None]:
     return [], None
 
 
-def _safe_factor_labels(items: list | None, limit: int = 5) -> str:
-    parts: list[str] = []
+def _safe_factor_labels(items: Optional[List[Any]], limit: int = 5) -> str:
+    parts: List[str] = []
     for f in (items or [])[:limit]:
         if isinstance(f, dict):
             parts.append(str(f.get("label", "") or "").strip())
@@ -303,7 +303,7 @@ def health():
     return {"ok": True, "service": "ayuq-api"}
 
 
-@app.get("/readings/{patient_id}", response_model=list[ReadingOut])
+@app.get("/readings/{patient_id}", response_model=List[ReadingOut])
 def get_readings(patient_id: str, hours: int = 24, db: Session = Depends(get_db)):
     patient_id = norm_path_patient_id(patient_id)
     since = datetime.now(timezone.utc) - timedelta(hours=hours)
@@ -316,7 +316,7 @@ def get_readings(patient_id: str, hours: int = 24, db: Session = Depends(get_db)
     return [row_to_reading_out(r) for r in rows]
 
 
-@app.get("/readings/{patient_id}/latest", response_model=ReadingOut | None)
+@app.get("/readings/{patient_id}/latest", response_model=Optional[ReadingOut])
 def get_latest(patient_id: str, db: Session = Depends(get_db)):
     patient_id = norm_path_patient_id(patient_id)
     row = (
@@ -328,7 +328,7 @@ def get_latest(patient_id: str, db: Session = Depends(get_db)):
     return row_to_reading_out(row) if row else None
 
 
-@app.get("/alerts/{patient_id}", response_model=list[AlertOut])
+@app.get("/alerts/{patient_id}", response_model=List[AlertOut])
 def get_alerts(patient_id: str, db: Session = Depends(get_db)):
     patient_id = norm_path_patient_id(patient_id)
     rows = (

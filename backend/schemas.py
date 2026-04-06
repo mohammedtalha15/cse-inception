@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -13,7 +11,7 @@ def _normalize_patient_id(v: object) -> str:
 
 
 class ReadingIn(BaseModel):
-    timestamp: datetime | None = None
+    timestamp: Optional[datetime] = None
     glucose_mgdl: float = Field(ge=20, le=600, description="mg/dL (typical sensor range)")
     glucose_trend: float = Field(ge=-20, le=20, description="mg/dL per minute")
     last_meal_mins_ago: int = Field(ge=0, le=43200)
@@ -45,10 +43,10 @@ class ReadingOut(BaseModel):
     rule_score: int
     ml_score: int
     hybrid_score: int
-    factors: list[dict[str, Any]]
-    explanation: str | None
-    alert_type: str | None
-    time_to_low_minutes: float | None
+    factors: List[Dict[str, Any]]
+    explanation: Optional[str]
+    alert_type: Optional[str]
+    time_to_low_minutes: Optional[float]
 
     class Config:
         from_attributes = True
@@ -61,14 +59,15 @@ class ProfileIn(BaseModel):
     @classmethod
     def profile_patient_id_upper(cls, v: object) -> str:
         return _normalize_patient_id(v)
-    typical_breakfast_time: str | None = None
-    typical_lunch_time: str | None = None
-    typical_dinner_time: str | None = None
-    insulin_type: str | None = None
-    basal_schedule: str | None = None
-    activity_pattern: str | None = None
-    sleep_window: str | None = None
-    notes: str | None = None
+
+    typical_breakfast_time: Optional[str] = None
+    typical_lunch_time: Optional[str] = None
+    typical_dinner_time: Optional[str] = None
+    insulin_type: Optional[str] = None
+    basal_schedule: Optional[str] = None
+    activity_pattern: Optional[str] = None
+    sleep_window: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class ScenarioAction(BaseModel):
@@ -99,8 +98,10 @@ class AlertOut(BaseModel):
     class Config:
         from_attributes = True
 
+
 class MLPredictRequest(BaseModel):
-    input: list[float]  # [pregnancies, glucose, bp, skin, insulin, bmi, dpf, age]
+    input: List[float]  # [pregnancies, glucose, bp, skin, insulin, bmi, dpf, age]
+
 
 class MLPredictResponse(BaseModel):
     prediction: int

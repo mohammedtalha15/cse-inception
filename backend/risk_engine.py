@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any, Dict, List, Optional, TypedDict
 
 
 class RiskFactor(TypedDict):
@@ -33,7 +33,7 @@ def hybrid_score(rule_score: int, ml_score: int, rule_weight: float = 0.55) -> i
     return int(round(rule_weight * rule_score + (1 - rule_weight) * ml_score))
 
 
-def time_to_low_minutes(glucose_mgdl: float, trend_mgdl_per_min: float) -> float | None:
+def time_to_low_minutes(glucose_mgdl: float, trend_mgdl_per_min: float) -> Optional[float]:
     """
     Minutes until glucose hits 70 mg/dL if trend stays constant (negative trend only).
     time = (current - 70) / abs(trend)
@@ -60,11 +60,11 @@ def alert_type(score: int) -> str:
     return "critical"
 
 
-def profile_context_factors(reading: dict[str, Any], profile: dict[str, Any]) -> list[RiskFactor]:
+def profile_context_factors(reading: Dict[str, Any], profile: Dict[str, Any]) -> List[RiskFactor]:
     """
     Personalization from POST /profile — adds explainable points when habits amplify risk.
     """
-    out: list[RiskFactor] = []
+    out: List[RiskFactor] = []
 
     if profile.get("sleep_window") and str(profile["sleep_window"]).strip():
         if reading.get("time_of_day") == "night":
@@ -120,11 +120,11 @@ def profile_context_factors(reading: dict[str, Any], profile: dict[str, Any]) ->
 
 
 def compute_risk_detailed(
-    reading: dict[str, Any],
-    profile: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+    reading: Dict[str, Any],
+    profile: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     score = 0
-    factors: list[RiskFactor] = []
+    factors: List[RiskFactor] = []
 
     g = float(reading["glucose_mgdl"])
     if g < 70:

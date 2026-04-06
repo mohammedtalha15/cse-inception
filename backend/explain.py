@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 import httpx
 
 
-def fallback_explanation(reading: dict[str, Any], hybrid: int, factors: list[dict]) -> str:
+def fallback_explanation(reading: Dict[str, Any], hybrid: int, factors: List[dict]) -> str:
     parts = [f"Risk score is {hybrid}/100."]
     if factors:
         top = factors[:3]
@@ -88,7 +88,7 @@ def _should_try_next_model(resp: httpx.Response) -> bool:
     return False
 
 
-def _extract_text(data: dict[str, Any]) -> str:
+def _extract_text(data: Dict[str, Any]) -> str:
     candidates = data.get("candidates") or []
     if not candidates:
         return ""
@@ -97,7 +97,7 @@ def _extract_text(data: dict[str, Any]) -> str:
     return "".join(texts).strip()
 
 
-def generate_explanation(reading: dict[str, Any], hybrid: int, factors: list[dict]) -> str:
+def generate_explanation(reading: Dict[str, Any], hybrid: int, factors: List[dict]) -> str:
     api_key = _normalize_api_key(_gemini_key())
     if not api_key:
         return fallback_explanation(reading, hybrid, factors)
@@ -122,7 +122,7 @@ Contributing factors:
 
 In exactly 2 short sentences, explain clearly to the patient why hypoglycemia risk is elevated right now and what they should do. Use simple, calm language. No medical jargon."""
 
-    payload: dict[str, Any] = {
+    payload: Dict[str, Any] = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": {
             "maxOutputTokens": 200,
@@ -159,7 +159,7 @@ In exactly 2 short sentences, explain clearly to the patient why hypoglycemia ri
     return fallback_explanation(reading, hybrid, factors)
 
 
-def _chat_fallback(user_message: str, context: str | None) -> str:
+def _chat_fallback(user_message: str, context: Optional[str]) -> str:
     base = (
         "Ayuq focuses on hypoglycemia risk from glucose trend, meals, insulin, and activity. "
         "This reply is offline: follow your clinician's plan for lows (typically about 15g fast carb, "
@@ -170,7 +170,7 @@ def _chat_fallback(user_message: str, context: str | None) -> str:
     return f"{base}\n\nYour question was: {user_message[:500]}"
 
 
-def generate_chat_reply(user_message: str, context: str | None) -> str:
+def generate_chat_reply(user_message: str, context: Optional[str]) -> str:
     """Short patient-facing answer; uses Gemini when configured."""
     api_key = _normalize_api_key(_gemini_key())
     if not api_key:
@@ -193,7 +193,7 @@ Rules:
 - If they report emergency symptoms (unconscious, seizure, can't swallow), tell them to call emergency services now.
 - Do not claim you saw real-time medical devices unless context above includes readings."""
 
-    payload: dict[str, Any] = {
+    payload: Dict[str, Any] = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": {
             "maxOutputTokens": 512,
