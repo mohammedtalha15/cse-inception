@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from database import AlertRow, ProfileRow, ReadingRow, SimulatorStateRow, make_session_factory
 from explain import generate_explanation
 from risk_engine import compute_risk_detailed
-from schemas import AlertOut, ProfileIn, ReadingIn, ReadingOut, ScenarioAction
+from schemas import AlertOut, ProfileIn, ReadingIn, ReadingOut, ScenarioAction, MLPredictRequest, MLPredictResponse
 
 _BACKEND_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _BACKEND_DIR.parent
@@ -34,6 +34,20 @@ DB_PATH = _BACKEND_DIR / "ayuq.db"
 _raw_db = (os.environ.get("DATABASE_URL") or "").strip() or f"sqlite:///{DB_PATH}"
 DATABASE_URL = _normalize_database_url(_raw_db)
 SessionLocal = make_session_factory(DATABASE_URL)
+
+import pickle
+import numpy as np
+import google.generativeai as genai
+
+_ML_MODEL = None
+_ML_SCALER = None
+try:
+    with open(_BACKEND_DIR / "model.pkl", "rb") as f:
+        _ML_MODEL = pickle.load(f)
+    with open(_BACKEND_DIR / "scaler.pkl", "rb") as f:
+        _ML_SCALER = pickle.load(f)
+except Exception as e:
+    print(f"Warning: Could not load ML models: {e}")
 
 app = FastAPI(title="Ayuq API", version="0.1.0")
 
@@ -318,3 +332,50 @@ def post_sim_scenario(patient_id: str, body: ScenarioAction, db: Session = Depen
             status_code=500,
             detail=str(e) or type(e).__name__,
         ) from e
+
+
+@app.post("/predict", response_model=MLPredictResponse)
+def predict_diabetes_risk(body: MLPredictRequest):
+    if _ML_MODEL is None or _ML_SCALER is None:
+        raise HTTPException(status_code=500, detail="ML model not loaded. Run train.py first.")
+    
+    try:
+        if len(body.input) != 8:
+            raise ValueError(f"Expected 8 features, got {len(body.input)}")
+            
+        input_data = np.array(body.input).reshape(1, -1)
+        scaled_input = _ML_SCALER.transform(input_data)
+        
+        prediction = int(_ML_MODEL.predict(scaled_input)[0])
+        probabilities = _ML_MODEL.predict_proba(scaled_input)[0]
+        probability = float(probabilities[1]) if len(probabilities) > 1 else float(prediction)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Inference error: {e}")
+        
+    if probability < 0.3:
+        risk_level = "Low"
+    elif probability <= 0.7:
+        risk_level = "Medium"
+    else:
+        risk_level = "High"
+        
+    explanation = "Explanation unavailable."
+    try:
+        gemini_api_key = os.environ.get("GEMINI_API_KEY")
+        if gemini_api_key:
+            genai.configure(api_key=gemini_api_key)
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            prompt = f"A patient has the following Pima diabetes factors [pregnancies, glucose, bp, skin, insulin, bmi, dpf, age]: {body.input}. The random forest model predicted a risk probability of {probability:.2f} ({risk_level} risk). Keep your response under 3 sentences and explain why in plain English for the patient in 2nd person."
+            response = model.generate_content(prompt)
+            explanation = response.text
+    except Exception as e:
+        print(f"Gemini error: {e}")
+        explanation = f"Could not generate explanation due to an error: {e}"
+        
+    return MLPredictResponse(
+        prediction=prediction,
+        probability=probability,
+        risk_level=risk_level,
+        explanation=explanation
+    )
+

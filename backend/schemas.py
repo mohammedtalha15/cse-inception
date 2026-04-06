@@ -84,3 +84,12 @@ class AlertOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class MLPredictRequest(BaseModel):
+    input: list[float]  # [pregnancies, glucose, bp, skin, insulin, bmi, dpf, age]
+
+class MLPredictResponse(BaseModel):
+    prediction: int
+    probability: float
+    risk_level: str
+    explanation: str

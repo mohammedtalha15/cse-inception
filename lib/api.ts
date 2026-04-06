@@ -135,3 +135,19 @@ export async function fetchProfile(patientId: string) {
   if (res.status === 404) return null;
   return parse<Record<string, unknown>>(res);
 }
+
+export async function predictDiabetesRisk(input: number[]) {
+  const b = apiBase();
+  const res = await fetch(`${b}/predict`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ input }),
+  });
+  return parse<{
+    prediction: number;
+    probability: number;
+    risk_level: string;
+    explanation: string;
+  }>(res);
+}
+
