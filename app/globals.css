@@ -87,6 +87,12 @@
   }
 }
 
+@layer components {
+  .form-input {
+    @apply w-full border-2 border-foreground bg-background px-3 py-2 font-mono text-xs outline-none ring-0 focus:border-accent;
+  }
+}
+
 /* Dot grid */
 .dot-grid-bg {
   background-image: radial-gradient(circle, #c4c2b8 1px, transparent 1px);

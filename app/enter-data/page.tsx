@@ -28,7 +28,9 @@ export default function EnterDataPage() {
           powered by Google Gemini (or built-in guidance if AI is unavailable).
         </p>
 
-        <EnterVitalsForm />
+        <div className="border-2 border-foreground bg-card p-6 sm:p-8">
+          <EnterVitalsForm />
+        </div>
 
         <div className="mt-10 flex flex-wrap gap-3">
           <Link

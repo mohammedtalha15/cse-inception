@@ -14,12 +14,12 @@ def _normalize_patient_id(v: object) -> str:
 
 class ReadingIn(BaseModel):
     timestamp: datetime | None = None
-    glucose_mgdl: float
-    glucose_trend: float
-    last_meal_mins_ago: int = Field(ge=0)
-    meal_carbs_g: float = 0
-    last_insulin_units: float = 0
-    insulin_mins_ago: int = Field(ge=0)
+    glucose_mgdl: float = Field(ge=20, le=600, description="mg/dL (typical sensor range)")
+    glucose_trend: float = Field(ge=-20, le=20, description="mg/dL per minute")
+    last_meal_mins_ago: int = Field(ge=0, le=43200)
+    meal_carbs_g: float = Field(default=0, ge=0, le=2000)
+    last_insulin_units: float = Field(default=0, ge=0, le=500)
+    insulin_mins_ago: int = Field(ge=0, le=43200)
     activity_level: str
     time_of_day: str
     patient_id: str = "P001"
@@ -73,6 +73,20 @@ class ProfileIn(BaseModel):
 
 class ScenarioAction(BaseModel):
     action: str  # skip_meal | start_workout | end_workout | add_insulin | reset
+
+
+class ChatIn(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+    patient_id: str = "P001"
+
+    @field_validator("patient_id", mode="before")
+    @classmethod
+    def chat_patient_id_upper(cls, v: object) -> str:
+        return _normalize_patient_id(v)
+
+
+class ChatOut(BaseModel):
+    reply: str
 
 
 class AlertOut(BaseModel):

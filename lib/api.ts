@@ -3,8 +3,8 @@ import type { AlertItem, Reading, SimulatorState } from "./types";
 const DEFAULT = "http://127.0.0.1:8000";
 
 /**
- * In the browser, call same-origin `/api/backend/*` so Next proxies to FastAPI (avoids CORS /
- * Safari "Load failed" on cross-origin localhost). Server-side keeps direct URL for scripts.
+ * In the browser, call same-origin `/api/backend/*` so Next rewrites to FastAPI (avoids CORS).
+ * Set `BACKEND_URL` or `NEXT_PUBLIC_API_URL` on the host so rewrites target your live API.
  */
 export function apiBase(): string {
   if (typeof window !== "undefined") {
@@ -31,15 +31,27 @@ function formatDetail(detail: unknown): string {
   return String(detail);
 }
 
+function looksLikeHtml(s: string) {
+  const h = s.slice(0, 200).toLowerCase();
+  return h.includes("<!doctype") || h.includes("<html");
+}
+
 async function parse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const t = await res.text();
     let msg = t || res.statusText;
-    try {
-      const j = JSON.parse(t) as { detail?: unknown };
-      if (j?.detail !== undefined) msg = formatDetail(j.detail) || msg;
-    } catch {
-      /* not JSON */
+    if (looksLikeHtml(msg)) {
+      msg =
+        res.status === 504 || res.status === 502
+          ? "API timed out or was unreachable (check BACKEND_URL and that FastAPI is running)."
+          : "Got an HTML error page instead of JSON — usually wrong API URL, crashed backend, or proxy timeout. Verify BACKEND_URL / NEXT_PUBLIC_API_URL and redeploy.";
+    } else {
+      try {
+        const j = JSON.parse(t) as { detail?: unknown };
+        if (j?.detail !== undefined) msg = formatDetail(j.detail) || msg;
+      } catch {
+        /* not JSON */
+      }
     }
     throw new Error(msg || `HTTP ${res.status}`);
   }
@@ -151,3 +163,16 @@ export async function predictDiabetesRisk(input: number[]) {
   }>(res);
 }
 
+export async function postChat(message: string, patientId = "P001"): Promise<string> {
+  const b = apiBase();
+  const res = await fetch(`${b}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message,
+      patient_id: patientId.trim().toUpperCase() || "P001",
+    }),
+  });
+  const data = await parse<{ reply: string }>(res);
+  return data.reply;
+}

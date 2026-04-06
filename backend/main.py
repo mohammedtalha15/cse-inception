@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import os
 import traceback
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from typing import Any
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -11,9 +12,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from database import AlertRow, ProfileRow, ReadingRow, SimulatorStateRow, make_session_factory
-from explain import generate_explanation
+from explain import generate_chat_reply, generate_explanation
 from risk_engine import compute_risk_detailed
-from schemas import AlertOut, ProfileIn, ReadingIn, ReadingOut, ScenarioAction, MLPredictRequest, MLPredictResponse
+from schemas import (
+    AlertOut,
+    ChatIn,
+    ChatOut,
+    MLPredictRequest,
+    MLPredictResponse,
+    ProfileIn,
+    ReadingIn,
+    ReadingOut,
+    ScenarioAction,
+)
 
 _BACKEND_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _BACKEND_DIR.parent
@@ -70,6 +81,19 @@ def get_db():
         db.close()
 
 
+def json_safe_reading_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
+    """JSON columns (e.g. Postgres) cannot store datetime objects — use ISO strings."""
+    out: dict[str, Any] = {}
+    for k, v in payload.items():
+        if isinstance(v, datetime):
+            out[k] = v.isoformat()
+        elif isinstance(v, date):
+            out[k] = v.isoformat()
+        else:
+            out[k] = v
+    return out
+
+
 def norm_path_patient_id(patient_id: str) -> str:
     """Match dashboard IDs (P001) even if the URL used p001."""
     s = (patient_id or "").strip().upper()
@@ -78,10 +102,21 @@ def norm_path_patient_id(patient_id: str) -> str:
 
 def unpack_factors(fac) -> tuple[list, float | None]:
     if isinstance(fac, dict) and "items" in fac:
-        return fac["items"], fac.get("_ttl")
+        raw = fac["items"]
+        return (raw if isinstance(raw, list) else []), fac.get("_ttl")
     if isinstance(fac, list):
         return fac, None
     return [], None
+
+
+def _safe_factor_labels(items: list | None, limit: int = 5) -> str:
+    parts: list[str] = []
+    for f in (items or [])[:limit]:
+        if isinstance(f, dict):
+            parts.append(str(f.get("label", "") or "").strip())
+        else:
+            parts.append(str(f))
+    return ", ".join(p for p in parts if p) or "none"
 
 
 def row_to_reading_out(row: ReadingRow) -> ReadingOut:
@@ -137,7 +172,7 @@ def post_reading(body: ReadingIn, db: Session = Depends(get_db)):
                     patient_id=body.patient_id,
                     hybrid_score=detail["hybrid_score"],
                     explanation=explanation,
-                    reading_snapshot=payload,
+                    reading_snapshot=json_safe_reading_snapshot(payload),
                 )
             )
 
@@ -193,6 +228,49 @@ def post_reading(body: ReadingIn, db: Session = Depends(get_db)):
             status_code=500,
             detail=str(e) or type(e).__name__,
         ) from e
+
+
+@app.post("/chat", response_model=ChatOut)
+def post_chat(body: ChatIn, db: Session = Depends(get_db)):
+    """Always returns 200 with a reply — avoids proxy timeouts surfacing as opaque 500s."""
+    hard_fallback = (
+        "I could not reach the AI service right now. General guidance: treat suspected lows with "
+        "fast-acting carbohydrate per your care plan, recheck glucose, and get urgent help for "
+        "confusion, seizures, or loss of consciousness."
+    )
+    try:
+        pid = norm_path_patient_id(body.patient_id)
+        context = None
+        try:
+            row = (
+                db.query(ReadingRow)
+                .filter(ReadingRow.patient_id == pid)
+                .order_by(ReadingRow.timestamp.desc())
+                .first()
+            )
+            if row:
+                items, _ttl = unpack_factors(row.factors_json)
+                top_labels = _safe_factor_labels(items)
+                context = (
+                    f"Patient {pid}: latest glucose {row.glucose_mgdl} mg/dL, "
+                    f"trend {row.glucose_trend} mg/dL/min, hybrid risk {row.hybrid_score}/100, "
+                    f"alert band {row.alert_type or 'n/a'}. "
+                    f"Factor labels: {top_labels}."
+                )
+        except Exception:
+            traceback.print_exc()
+            context = None
+
+        reply = generate_chat_reply(body.message.strip(), context)
+        return ChatOut(reply=reply)
+    except Exception:
+        traceback.print_exc()
+        return ChatOut(reply=hard_fallback)
+
+
+@app.get("/health")
+def health():
+    return {"ok": True, "service": "ayuq-api"}
 
 
 @app.get("/readings/{patient_id}", response_model=list[ReadingOut])

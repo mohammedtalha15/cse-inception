@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import { GeistPixelGrid } from "geist/font/pixel";
+import { ChatDockRoot } from "@/components/chat-dock-root";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AiChatDock } from "@/components/ai-chat-dock";
 
 import "./globals.css";
 
@@ -48,7 +48,7 @@ export default function RootLayout({
       <body className="min-h-screen font-mono antialiased">
         <ThemeProvider defaultTheme="dark">
           {children}
-          <AiChatDock />
+          <ChatDockRoot />
         </ThemeProvider>
       </body>
     </html>

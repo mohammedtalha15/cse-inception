@@ -3,25 +3,15 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { postReading } from "@/lib/api";
+import type { Reading, RiskFactor } from "@/lib/types";
 
 const ACTIVITY_LEVELS = ["sedentary", "light", "moderate", "intense"] as const;
 const TIME_OF_DAY = ["morning", "afternoon", "evening", "night"] as const;
 
-interface RiskResult {
-  hybrid_score: number;
-  rule_score: number;
-  ml_score: number;
-  factors: { label: string; weight: number; direction: string }[];
-  explanation: string | null;
-  alert_type: string | null;
-  time_to_low_minutes: number | null;
-}
-
 export function EnterVitalsForm() {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<RiskResult | null>(null);
+  const [result, setResult] = useState<Reading | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -44,17 +34,15 @@ export function EnterVitalsForm() {
     };
 
     try {
-      const res = await fetch(`${API}/reading`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const detail = await res.json().catch(() => null);
-        throw new Error(detail?.detail || `Server error ${res.status}`);
-      }
-      const data = await res.json();
+      const data = await postReading(body);
       setResult(data);
+      if (typeof window !== "undefined") {
+        const pid =
+          String(body.patient_id || "P001")
+            .trim()
+            .toUpperCase() || "P001";
+        localStorage.setItem("ayuq_chat_patient_id", pid);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -77,11 +65,13 @@ export function EnterVitalsForm() {
 
         {/* Glucose */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Glucose (mg/dL)" hint="Current blood glucose">
+          <Field label="Glucose (mg/dL)" hint="Typical range 20–600 (API rejects outliers)">
             <input
               name="glucose_mgdl"
               type="number"
               step="any"
+              min={20}
+              max={600}
               required
               placeholder="110"
               className="form-input"
@@ -92,6 +82,8 @@ export function EnterVitalsForm() {
               name="glucose_trend"
               type="number"
               step="any"
+              min={-20}
+              max={20}
               required
               placeholder="-1.2"
               className="form-input"
@@ -101,21 +93,24 @@ export function EnterVitalsForm() {
 
         {/* Meal */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Last Meal (min ago)">
+          <Field label="Last Meal (min ago)" hint="Max 43200 (30 days)">
             <input
               name="last_meal_mins_ago"
               type="number"
-              min="0"
+              min={0}
+              max={43200}
               required
               placeholder="90"
               className="form-input"
             />
           </Field>
-          <Field label="Meal Carbs (g)">
+          <Field label="Meal Carbs (g)" hint="Max 2000 (API limit)">
             <input
               name="meal_carbs_g"
               type="number"
               step="any"
+              min={0}
+              max={2000}
               defaultValue="0"
               className="form-input"
             />
@@ -124,20 +119,23 @@ export function EnterVitalsForm() {
 
         {/* Insulin */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Last Insulin (units)">
+          <Field label="Last Insulin (units)" hint="Max 500">
             <input
               name="last_insulin_units"
               type="number"
               step="any"
+              min={0}
+              max={500}
               defaultValue="0"
               className="form-input"
             />
           </Field>
-          <Field label="Insulin (min ago)">
+          <Field label="Insulin (min ago)" hint="Max 43200">
             <input
               name="insulin_mins_ago"
               type="number"
-              min="0"
+              min={0}
+              max={43200}
               required
               placeholder="45"
               className="form-input"
@@ -238,24 +236,13 @@ export function EnterVitalsForm() {
                 <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                   Factors
                 </span>
-                {result.factors.map((f, i) => (
+                {result.factors.map((f: RiskFactor, i: number) => (
                   <div
-                    key={i}
+                    key={`${f.key}-${i}`}
                     className="flex items-center justify-between border-b border-foreground/5 py-1 font-mono text-xs"
                   >
                     <span className="text-muted-foreground">{f.label}</span>
-                    <span
-                      className={
-                        f.direction === "up"
-                          ? "text-red-400"
-                          : f.direction === "down"
-                          ? "text-green-400"
-                          : "text-foreground"
-                      }
-                    >
-                      {f.direction === "up" ? "↑" : f.direction === "down" ? "↓" : "—"}{" "}
-                      {f.weight}
-                    </span>
+                    <span className="tabular-nums text-accent">+{f.points}</span>
                   </div>
                 ))}
               </div>

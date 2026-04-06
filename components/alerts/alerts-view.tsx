@@ -35,10 +35,22 @@ export function AlertsView() {
   }, [patientId]);
 
   useEffect(() => {
-    queueMicrotask(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ayuq_chat_patient_id", patientId);
+    }
+  }, [patientId]);
+
+  useEffect(() => {
+    const tick = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
       void load();
+    };
+    queueMicrotask(() => {
+      tick();
     });
-    const id = setInterval(() => queueMicrotask(() => void load()), 8000);
+    const id = setInterval(() => queueMicrotask(() => tick()), 8000);
     return () => clearInterval(id);
   }, [load]);
 

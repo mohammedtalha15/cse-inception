@@ -131,7 +131,8 @@ In exactly 2 short sentences, explain clearly to the patient why hypoglycemia ri
     url_tpl = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent"
 
     try:
-        with httpx.Client(timeout=30.0) as client:
+        # Keep under typical serverless proxy limits (e.g. ~10s) so /reading does not 502/500.
+        with httpx.Client(timeout=10.0) as client:
             for i, model in enumerate(models):
                 r = client.post(
                     url_tpl.format(model),
@@ -154,3 +155,73 @@ In exactly 2 short sentences, explain clearly to the patient why hypoglycemia ri
     except Exception:
         pass
     return fallback_explanation(reading, hybrid, factors)
+
+
+def _chat_fallback(user_message: str, context: str | None) -> str:
+    base = (
+        "Ayuq focuses on hypoglycemia risk from glucose trend, meals, insulin, and activity. "
+        "This reply is offline: follow your clinician's plan for lows (typically about 15g fast carb, "
+        "recheck in ~15 minutes), and seek emergency care for severe symptoms."
+    )
+    if context:
+        return f"{base}\n\nContext we have: {context}\nYour question was: {user_message[:500]}"
+    return f"{base}\n\nYour question was: {user_message[:500]}"
+
+
+def generate_chat_reply(user_message: str, context: str | None) -> str:
+    """Short patient-facing answer; uses Gemini when configured."""
+    api_key = _normalize_api_key(_gemini_key())
+    if not api_key:
+        return _chat_fallback(user_message, context)
+
+    primary = _norm_model(os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"))
+    fb_raw = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash-lite").strip()
+    fallback = _norm_model(fb_raw) if fb_raw else ""
+    models = [primary] if primary == fallback else [primary, fallback]
+
+    ctx_block = f"\n\nRecent stored context:\n{context}\n" if context else ""
+    prompt = f"""You are Ayuq, a calm diabetes education assistant (not a doctor).{ctx_block}
+User question:
+{user_message}
+
+Rules:
+- Answer in 3–6 short sentences, plain language.
+- Relate to hypoglycemia risk, glucose trends, meals, insulin, or activity when relevant.
+- Never diagnose; say to follow the user's care team for medical decisions.
+- If they report emergency symptoms (unconscious, seizure, can't swallow), tell them to call emergency services now.
+- Do not claim you saw real-time medical devices unless context above includes readings."""
+
+    payload: dict[str, Any] = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "maxOutputTokens": 512,
+            "temperature": 0.35,
+        },
+    }
+
+    url_tpl = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent"
+
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            for i, model in enumerate(models):
+                r = client.post(
+                    url_tpl.format(model),
+                    params={"key": api_key},
+                    json=payload,
+                )
+                if r.is_success:
+                    data = r.json()
+                    out = _extract_text(data)
+                    if out:
+                        return out
+                    return _chat_fallback(user_message, context)
+
+                if _invalid_api_key_response(r):
+                    break
+
+                if _should_try_next_model(r) and i < len(models) - 1:
+                    continue
+                break
+    except Exception:
+        pass
+    return _chat_fallback(user_message, context)
