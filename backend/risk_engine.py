@@ -186,7 +186,7 @@ def compute_risk_detailed(
         score += p
         factors.append({"key": "activity", "label": "High activity (faster glucose use)", "points": p})
 
-    if profile:
+    if profile and isinstance(profile, dict):
         pf = profile_context_factors(reading, profile)
         for f in pf:
             score += f["points"]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 import traceback
 from datetime import date, datetime, timedelta, timezone
@@ -12,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from database import AlertRow, ProfileRow, ReadingRow, SimulatorStateRow, make_session_factory
-from explain import generate_chat_reply, generate_explanation
+from explain import fallback_explanation, generate_chat_reply, generate_explanation
 from risk_engine import compute_risk_detailed
 from schemas import (
     AlertOut,
@@ -62,11 +63,15 @@ except Exception as e:
 
 app = FastAPI(title="Ayuq API", version="0.1.0")
 
+_cors_raw = os.environ.get(
+    "CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+)
+_cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
+if not _cors_origins:
+    _cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get(
-        "CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
-    ).split(","),
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -79,6 +84,19 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def _finite_float_or_none(value: Any) -> float | None:
+    """Postgres JSON rejects NaN/Inf; numpy scalars may appear from ML paths."""
+    if value is None:
+        return None
+    try:
+        x = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(x):
+        return None
+    return x
 
 
 def json_safe_reading_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
@@ -154,18 +172,30 @@ def post_reading(body: ReadingIn, db: Session = Depends(get_db)):
         payload["timestamp"] = ts
 
         profile_row = db.get(ProfileRow, body.patient_id)
-        profile_data = profile_row.data_json if profile_row else None
+        profile_data = None
+        if profile_row and isinstance(profile_row.data_json, dict):
+            profile_data = profile_row.data_json
 
         detail = compute_risk_detailed(payload, profile_data)
         factors = detail["factors"]
-        ttl = detail.get("time_to_low_minutes")
+        ttl = _finite_float_or_none(detail.get("time_to_low_minutes"))
         factors_store = {"items": factors, "_ttl": ttl}
 
         explanation = None
         if detail["hybrid_score"] > 60:
-            explanation = generate_explanation(
-                payload, detail["hybrid_score"], factors
-            )
+            try:
+                explanation = generate_explanation(
+                    payload, detail["hybrid_score"], factors
+                )
+            except Exception:
+                traceback.print_exc()
+                explanation = fallback_explanation(
+                    payload, detail["hybrid_score"], factors
+                )
+            if not (explanation or "").strip():
+                explanation = fallback_explanation(
+                    payload, detail["hybrid_score"], factors
+                )
             db.add(
                 AlertRow(
                     timestamp=ts,

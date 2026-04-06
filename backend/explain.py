@@ -14,7 +14,9 @@ def fallback_explanation(reading: dict[str, Any], hybrid: int, factors: list[dic
         top = factors[:3]
         parts.append(
             "Main contributors: "
-            + "; ".join(f"{f['label']} (+{f['points']})" for f in top)
+            + "; ".join(
+                f"{f.get('label', '?')} (+{f.get('points', 0)})" for f in top if isinstance(f, dict)
+            )
             + "."
         )
     parts.append(
