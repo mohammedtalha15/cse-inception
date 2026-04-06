@@ -3,8 +3,8 @@ import type { AlertItem, Reading, SimulatorState } from "./types";
 const DEFAULT = "http://127.0.0.1:8000";
 
 /**
- * In the browser, call same-origin `/api/backend/*` so Next rewrites to FastAPI (avoids CORS).
- * Set `BACKEND_URL` or `NEXT_PUBLIC_API_URL` on the host so rewrites target your live API.
+ * Browser: same-origin `/api/backend/*` → App Router proxy (runtime `BACKEND_URL` / `NEXT_PUBLIC_API_URL`).
+ * Set those on your **host** (e.g. Vercel) to your live FastAPI URL — no rebuild needed for `BACKEND_URL`.
  */
 export function apiBase(): string {
   if (typeof window !== "undefined") {
