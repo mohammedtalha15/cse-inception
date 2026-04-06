@@ -5,6 +5,13 @@ import { predictDiabetesRisk } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ShieldAlert, Sparkles, Brain } from "lucide-react";
 
+type PredictResult = {
+  prediction: number;
+  probability: number;
+  risk_level: string;
+  explanation: string;
+};
+
 const FEATURES = [
   { key: "pregnancies", label: "Pregnancies", hint: "Number of times pregnant" },
   { key: "glucose", label: "Glucose", hint: "Plasma glucose conc. (mg/dL)" },
@@ -18,7 +25,7 @@ const FEATURES = [
 
 export default function PredictPage() {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<PredictResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -32,8 +39,8 @@ export default function PredictPage() {
     try {
       const res = await predictDiabetesRisk(input);
       setResult(res);
-    } catch (err: any) {
-      setError(err.message || "Failed to predict");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to predict");
     } finally {
       setLoading(false);
     }
