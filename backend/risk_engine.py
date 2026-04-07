@@ -47,7 +47,7 @@ def time_to_low_minutes(glucose_mgdl: float, trend_mgdl_per_min: float) -> Optio
 def risk_bucket(score: int) -> str:
     if score <= 30:
         return "safe"
-    if score <= 60:
+    if score < 40:
         return "watch"
     return "alert"
 
@@ -55,7 +55,7 @@ def risk_bucket(score: int) -> str:
 def alert_type(score: int) -> str:
     if score <= 30:
         return "stable"
-    if score <= 60:
+    if score < 40:
         return "early"
     return "critical"
 
@@ -198,13 +198,16 @@ def compute_risk_detailed(
 
     rule_score = min(score, 100)
     patient_id = str(reading.get("patient_id", "P001"))
-    
-    # ML Score generation via RF model instead of stub
-    ml = None
+
+    # ML score: trained RandomForest on the app's 8-feature contract when model.pkl is present
+    ml: Optional[int] = None
+    diabetes_probability: Optional[float] = None
+    ml_model_source = "stub"
     if ml_model and ml_scaler:
         import numpy as np
+
         try:
-            # Map features: [pregnancies, glucose, bp, skin, insulin, bmi, dpf, age]
+            # Order matches train.py / MLPredictRequest: pregnancies, glucose, bp, skin, insulin, bmi, dpf, age
             input_features = [
                 float(profile.get("pregnancies", 0)),
                 float(reading.get("glucose_mgdl", 100)),
@@ -213,25 +216,26 @@ def compute_risk_detailed(
                 float(reading.get("last_insulin_units", 0)),
                 float(profile.get("bmi", 25.0)),
                 float(profile.get("dpf", 0.5)),
-                float(profile.get("age", 35))
+                float(profile.get("age", 35)),
             ]
             input_data = np.array(input_features).reshape(1, -1)
             scaled_input = ml_scaler.transform(input_data)
-            
+
             probabilities = ml_model.predict_proba(scaled_input)[0]
             probability = float(probabilities[1]) if len(probabilities) > 1 else 0.0
-            
-            # Probability returned by model mapped cleanly to the UI ML score out of 100
-            ml = int(probability * 100)
-            
+            diabetes_probability = max(0.0, min(1.0, probability))
+            ml = int(diabetes_probability * 100)
+            ml_model_source = "random_forest"
+
             import warnings
-            warnings.filterwarnings("ignore", category=UserWarning) # Suppress feature name warnings
+
+            warnings.filterwarnings("ignore", category=UserWarning)
         except Exception as e:
             print(f"Warning: ML pipeline mapping failed, using stub: {e}")
-            
+
     if ml is None:
         ml = ml_stub_score(patient_id, g, rule_score)
-        
+
     hybrid = hybrid_score(rule_score, ml)
 
     return {
@@ -242,4 +246,6 @@ def compute_risk_detailed(
         "bucket": risk_bucket(hybrid),
         "alert_type": alert_type(hybrid),
         "time_to_low_minutes": time_to_low_minutes(g, trend),
+        "diabetes_ml_probability": diabetes_probability,
+        "ml_model_source": ml_model_source,
     }

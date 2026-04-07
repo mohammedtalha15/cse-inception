@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Push a synthetic reading to Ayuq FastAPI every 5 seconds (demo loop).
+Push a synthetic reading to Sugarfree FastAPI every 5 seconds (demo loop).
 Uses GET /simulator/{patient_id} to apply scenario modifiers from the UI.
 
 Usage:

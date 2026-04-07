@@ -23,6 +23,10 @@ export type Reading = {
   explanation: string | null;
   alert_type: string | null;
   time_to_low_minutes: number | null;
+  /** Pima RF positive-class probability when model.pkl is loaded */
+  diabetes_ml_probability?: number | null;
+  /** random_forest | stub | null */
+  ml_model_source?: string | null;
 };
 
 export type AlertItem = {
@@ -38,4 +42,40 @@ export type SimulatorState = {
   skip_meal_boost_mins: number;
   workout_active: boolean;
   extra_insulin_units: number;
+};
+
+export type DoctorShareResult = {
+  ok: boolean;
+  patient_id: string;
+  doctor_id: string;
+  doctor_name: string;
+  clinic: string;
+  specialty: string;
+  distance_km: number;
+  eta_minutes: number;
+  contact_channel: string;
+  summary_shared: string;
+  doctor_suggestion: string;
+  risk_score?: number | null;
+  urgent?: boolean;
+};
+
+export type NearbyDoctor = {
+  doctor_id: string;
+  doctor_name: string;
+  clinic: string;
+  specialty: string;
+  distance_km: number;
+  eta_minutes: number;
+  available_channels: string[];
+  phone: string;
+  language: string;
+  accepting_new_cases: boolean;
+};
+
+export type DoctorNearbyResult = {
+  patient_id: string;
+  risk_score?: number | null;
+  urgent: boolean;
+  doctors: NearbyDoctor[];
 };

@@ -80,7 +80,7 @@ export function ProblemSolutionSection() {
         </h2>
         <p className="mt-4 max-w-3xl font-mono text-sm leading-relaxed text-muted-foreground md:text-base">
           Hypoglycemia is dangerous and often <span className="text-foreground">unpredictable</span> when
-          you only react to a single glucose snapshot. Ayuq is built to shift care from{" "}
+          you only react to a single glucose snapshot. Sugarfree is built to shift care from{" "}
           <span className="text-destructive line-through decoration-foreground/40">after the low</span>{" "}
           to <span className="text-accent">before the crisis</span> — using context, trend, and clear
           explanations so intervention can happen in time.
@@ -134,7 +134,7 @@ export function ProblemSolutionSection() {
         >
           <h3 className="mb-6 flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-background/70">
             <span className="inline-block h-2 w-2 bg-accent" />
-            How Ayuq addresses it
+            How Sugarfree addresses it
           </h3>
           <ul className="space-y-6">
             {SOLUTIONS.map((s, i) => (

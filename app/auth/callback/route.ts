@@ -5,7 +5,10 @@ import { getSupabaseCredentials } from "@/lib/supabase/env-server";
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const nextPath = url.searchParams.get("next") ?? "/";
+  const nextRaw = url.searchParams.get("next") ?? "/";
+  const nextPath = nextRaw.startsWith("/") ? nextRaw : "/";
+  const providerError = url.searchParams.get("error");
+  const providerErrorDesc = url.searchParams.get("error_description");
 
   const creds = getSupabaseCredentials();
   if (!creds) {
@@ -13,8 +16,17 @@ export async function GET(request: NextRequest) {
   }
   const { url: supabaseUrl, anonKey: supabaseKey } = creds;
 
+  if (providerError) {
+    const out = new URL("/auth/auth-code-error", url.origin);
+    out.searchParams.set("reason", providerError);
+    if (providerErrorDesc) out.searchParams.set("message", providerErrorDesc);
+    return NextResponse.redirect(out);
+  }
+
   if (!code) {
-    return NextResponse.redirect(new URL("/?auth_error=no_code", url.origin));
+    const out = new URL("/auth/auth-code-error", url.origin);
+    out.searchParams.set("reason", "no_code");
+    return NextResponse.redirect(out);
   }
 
   const response = NextResponse.redirect(new URL(nextPath, url.origin));
@@ -34,9 +46,10 @@ export async function GET(request: NextRequest) {
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    return NextResponse.redirect(
-      new URL(`/?auth_error=${encodeURIComponent(error.message)}`, url.origin),
-    );
+    const out = new URL("/auth/auth-code-error", url.origin);
+    out.searchParams.set("reason", "exchange_failed");
+    out.searchParams.set("message", error.message);
+    return NextResponse.redirect(out);
   }
 
   return response;

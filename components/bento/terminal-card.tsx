@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 const LOG_LINES = [
-  "> Initializing Ayuq pipeline...",
+  "> Initializing Sugarfree pipeline...",
   "> Streaming vitals: P001 @ 5s cadence",
   "> Feature extract: glucose_trend = -2.1 mg/dL·min",
   "> Rule engine: base score 35",
@@ -42,7 +42,7 @@ export function TerminalCard() {
         <span className="h-2 w-2 bg-foreground" />
         <span className="h-2 w-2 border border-foreground" />
         <span className="ml-auto text-[10px] uppercase tracking-widest text-muted-foreground">
-          ayuq.engine.log
+          sugarfree.engine.log
         </span>
       </div>
       <div className="flex-1 overflow-hidden bg-foreground p-4">

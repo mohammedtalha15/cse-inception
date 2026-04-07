@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { LogIn } from "lucide-react";
+import { AlertCircle, LogIn } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type ConfigResponse =
@@ -13,6 +13,7 @@ export function GoogleAuthButton() {
   const [busy, setBusy] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [creds, setCreds] = useState<{ url: string; anonKey: string } | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,20 +40,23 @@ export function GoogleAuthButton() {
 
   const onSignIn = useCallback(async () => {
     if (!creds || busy) return;
+    setAuthError(null);
     setBusy(true);
     try {
       const supabase = createSupabaseBrowserClient(creds.url, creds.anonKey);
-      const origin = window.location.origin;
+      const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || window.location.origin;
+      const callbackUrl = `${siteOrigin.replace(/\/+$/, "")}/auth/callback`;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${origin}/auth/callback`,
+          redirectTo: callbackUrl,
           queryParams: { prompt: "select_account" },
           skipBrowserRedirect: true,
         },
       });
       if (error) {
-        console.error(error);
+        console.error("Google OAuth start failed:", error);
+        setAuthError(error.message);
         setBusy(false);
         return;
       }
@@ -60,9 +64,11 @@ export function GoogleAuthButton() {
         window.location.assign(data.url);
         return;
       }
+      setAuthError("No OAuth URL was returned by Supabase.");
       setBusy(false);
     } catch (e) {
-      console.error(e);
+      console.error("Google OAuth start crashed:", e);
+      setAuthError(e instanceof Error ? e.message : "Unknown Google auth error");
       setBusy(false);
     }
   }, [creds, busy]);
@@ -96,16 +102,24 @@ export function GoogleAuthButton() {
   }
 
   return (
-    <motion.button
-      type="button"
-      disabled={busy}
-      onClick={() => void onSignIn()}
-      whileHover={{ scale: busy ? 1 : 1.02 }}
-      whileTap={{ scale: busy ? 1 : 0.98 }}
-      className="flex items-center gap-2 border border-foreground/20 bg-background/50 px-3 py-2 text-xs font-mono uppercase tracking-widest text-muted-foreground transition-colors duration-200 hover:border-foreground/40 hover:text-foreground disabled:opacity-60"
-    >
-      <LogIn size={14} strokeWidth={1.5} />
-      <span>{busy ? "Redirecting…" : "Sign in"}</span>
-    </motion.button>
+    <div className="space-y-1">
+      <motion.button
+        type="button"
+        disabled={busy}
+        onClick={() => void onSignIn()}
+        whileHover={{ scale: busy ? 1 : 1.02 }}
+        whileTap={{ scale: busy ? 1 : 0.98 }}
+        className="flex items-center gap-2 border border-foreground/20 bg-background/50 px-3 py-2 text-xs font-mono uppercase tracking-widest text-muted-foreground transition-colors duration-200 hover:border-foreground/40 hover:text-foreground disabled:opacity-60"
+      >
+        <LogIn size={14} strokeWidth={1.5} />
+        <span>{busy ? "Redirecting…" : "Sign in"}</span>
+      </motion.button>
+      {authError && (
+        <p className="flex max-w-60 items-start gap-1.5 font-mono text-[9px] leading-relaxed text-amber-600 dark:text-amber-400">
+          <AlertCircle size={12} className="mt-0.5 shrink-0" />
+          {authError}. Check Supabase Google provider + callback URLs.
+        </p>
+      )}
+    </div>
   );
 }

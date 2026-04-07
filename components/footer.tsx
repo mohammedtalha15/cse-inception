@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { SugarCubesLogo } from "@/components/sugar-cubes-logo";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -23,8 +24,9 @@ export function Footer() {
     >
       <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
         <div className="flex flex-col gap-1">
-          <span className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-foreground">
-            AYUQ
+          <span className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.15em] text-foreground">
+            <SugarCubesLogo className="h-4 w-4 text-accent" />
+            SUGARFREE
           </span>
           <span className="font-mono text-[10px] tracking-widest text-muted-foreground">
             Context-aware hypoglycemia risk intelligence · demo UI

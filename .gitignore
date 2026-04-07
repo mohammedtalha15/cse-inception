@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.local.example
 
 # vercel
 .vercel
@@ -40,10 +41,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Ayuq backend
+# Sugarfree backend
 backend/.venv/
 backend/venv/
 backend/__pycache__/
+backend/sugarfree.db
 backend/ayuq.db
+backend/model.pkl
+backend/scaler.pkl
 backend/data/*.csv
 !backend/data/diabetes.csv

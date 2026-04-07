@@ -10,6 +10,13 @@ type PredictResult = {
   probability: number;
   risk_level: string;
   explanation: string;
+  feature_contributions?: Array<{
+    feature: string;
+    value: number;
+    contribution_percent: number;
+    direction: "increases_risk" | "lowers_risk" | "neutral";
+    is_major: boolean;
+  }>;
 };
 
 const FEATURES = [
@@ -127,6 +134,72 @@ export default function PredictPage() {
               <span className="text-green-500 font-bold mr-2 text-xs">SYS{">"}</span>
               {result.explanation}
             </div>
+
+            {result.feature_contributions && result.feature_contributions.length > 0 && (
+              <div className="space-y-3 border border-green-500/30 bg-neutral-950 p-4">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-green-500">
+                  Explainable AI (Why prediction happened)
+                </p>
+                <p className="font-mono text-xs text-neutral-400">
+                  Not just result — feature contribution breakdown:
+                </p>
+                <div className="space-y-2">
+                  {result.feature_contributions.slice(0, 6).map((f) => (
+                    <div key={f.feature} className="space-y-1">
+                      <div className="flex items-center justify-between font-mono text-xs">
+                        <span className="text-neutral-200">
+                          {f.feature}
+                          {f.is_major ? " (major)" : ""}
+                        </span>
+                        <span className="text-green-400 tabular-nums">
+                          {f.contribution_percent.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="h-2 w-full bg-neutral-900 border border-neutral-800">
+                        <div
+                          className={`h-full ${
+                            f.direction === "increases_risk"
+                              ? "bg-red-500/80"
+                              : f.direction === "lowers_risk"
+                                ? "bg-green-500/80"
+                                : "bg-yellow-500/70"
+                          }`}
+                          style={{ width: `${Math.min(100, Math.max(2, f.contribution_percent))}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="font-mono text-[11px] text-neutral-300 leading-relaxed">
+                  {(() => {
+                    const top = [...result.feature_contributions]
+                      .sort((a, b) => b.contribution_percent - a.contribution_percent)
+                      .slice(0, 2);
+                    if (top.length === 0) return null;
+                    return (
+                      <>
+                        {top[0] && (
+                          <p>
+                            • {top[0].feature} contributed about{" "}
+                            <span className="text-green-400">{top[0].contribution_percent.toFixed(1)}%</span>{" "}
+                            to this risk signal.
+                          </p>
+                        )}
+                        {top[1] && (
+                          <p>
+                            • {top[1].feature} is also a major factor at{" "}
+                            <span className="text-green-400">{top[1].contribution_percent.toFixed(1)}%</span>.
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                <p className="font-mono text-[10px] text-neutral-500">
+                  Powered by SHAP-style feature attribution (with robust fallback).
+                </p>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

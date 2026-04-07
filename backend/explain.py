@@ -161,7 +161,7 @@ In exactly 2 short sentences, explain clearly to the patient why hypoglycemia ri
 
 def _chat_fallback(user_message: str, context: Optional[str]) -> str:
     base = (
-        "Ayuq focuses on hypoglycemia risk from glucose trend, meals, insulin, and activity. "
+        "Sugarfree focuses on hypoglycemia risk from glucose trend, meals, insulin, and activity. "
         "This reply is offline: follow your clinician's plan for lows (typically about 15g fast carb, "
         "recheck in ~15 minutes), and seek emergency care for severe symptoms."
     )
@@ -182,7 +182,7 @@ def generate_chat_reply(user_message: str, context: Optional[str]) -> str:
     models = [primary] if primary == fallback else [primary, fallback]
 
     ctx_block = f"\n\nRecent stored context:\n{context}\n" if context else ""
-    prompt = f"""You are Ayuq, a calm diabetes education assistant (not a doctor).{ctx_block}
+    prompt = f"""You are Sugarfree, a calm diabetes education assistant (not a doctor).{ctx_block}
 User question:
 {user_message}
 

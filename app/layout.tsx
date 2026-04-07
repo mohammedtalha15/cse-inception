@@ -12,7 +12,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ayuq — Context-Aware Hypoglycemia Risk Intelligence",
+  title: "Sugarfree — Context-Aware Hypoglycemia Risk Intelligence",
   description:
     "Predictive, context-aware hypoglycemia risk: trend + meals + insulin + activity + profile habits, time-to-threshold estimates, transparent factor scores, and Gemini-powered explanations — shifting care from reactive CGM alerts to early intervention.",
   keywords: [

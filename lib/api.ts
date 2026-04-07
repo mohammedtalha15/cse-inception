@@ -1,4 +1,10 @@
-import type { AlertItem, Reading, SimulatorState } from "./types";
+import type {
+  AlertItem,
+  DoctorNearbyResult,
+  DoctorShareResult,
+  Reading,
+  SimulatorState,
+} from "./types";
 
 const DEFAULT = "http://127.0.0.1:8000";
 
@@ -160,6 +166,13 @@ export async function predictDiabetesRisk(input: number[]) {
     probability: number;
     risk_level: string;
     explanation: string;
+    feature_contributions?: Array<{
+      feature: string;
+      value: number;
+      contribution_percent: number;
+      direction: "increases_risk" | "lowers_risk" | "neutral";
+      is_major: boolean;
+    }>;
   }>(res);
 }
 
@@ -175,4 +188,35 @@ export async function postChat(message: string, patientId = "P001"): Promise<str
   });
   const data = await parse<{ reply: string }>(res);
   return data.reply;
+}
+
+export async function shareWithNearestDoctor(payload: {
+  patient_id: string;
+  consent_to_share: boolean;
+  location_hint?: string;
+  contact_preference?: "call" | "chat" | "video";
+  patient_note?: string;
+  doctor_id?: string;
+}): Promise<DoctorShareResult> {
+  const b = apiBase();
+  const res = await fetch(`${b}/doctor/share`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return parse<DoctorShareResult>(res);
+}
+
+export async function fetchNearbyDoctors(
+  patientId: string,
+  locationHint?: string,
+): Promise<DoctorNearbyResult> {
+  const b = apiBase();
+  const q = new URLSearchParams();
+  if (locationHint?.trim()) q.set("location_hint", locationHint.trim());
+  const res = await fetch(
+    `${b}/doctor/nearby/${encodeURIComponent(patientId)}${q.toString() ? `?${q.toString()}` : ""}`,
+    { cache: "no-store" },
+  );
+  return parse<DoctorNearbyResult>(res);
 }

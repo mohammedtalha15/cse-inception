@@ -121,7 +121,7 @@ export function AboutSection() {
         className="mb-8 flex items-center gap-4"
       >
         <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          {"// SECTION: WHY_AYUQ"}
+          {"// SECTION: WHY_SUGARFREE"}
         </span>
         <div className="flex-1 border-t border-border" />
         <BlinkDot />
@@ -213,7 +213,7 @@ export function AboutSection() {
                 className="flex flex-col gap-4"
               >
                 <p className="font-mono text-xs leading-relaxed text-muted-foreground lg:text-sm">
-                  Ayuq ingests streaming vitals every five seconds: glucose, trend, meal gap, insulin
+                  Sugarfree ingests streaming vitals every five seconds: glucose, trend, meal gap, insulin
                   on board, activity, time of day, and your saved profile habits. The goal is not to
                   duplicate a late “you are low” buzzer — it is to estimate{" "}
                   <span className="text-foreground">risk minutes ahead</span> while the number still

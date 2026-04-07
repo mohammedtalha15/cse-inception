@@ -45,7 +45,7 @@ export function HeroSection() {
           transition={{ duration: 0.5, delay: 0.45, ease }}
           className="mb-6 max-w-lg text-xs leading-relaxed text-muted-foreground lg:text-sm font-mono"
         >
-          <strong className="text-foreground">Ayuq</strong> moves diabetes support from reactive CGM
+          <strong className="text-foreground">Sugarfree</strong> moves diabetes support from reactive CGM
           thresholds to <strong className="text-foreground">predictive, context-aware</strong>{" "}
           intelligence: trend, meals, insulin, activity, time of day — plus your saved habits — so
           risk surfaces <strong className="text-accent">before</strong> a low, with factor-by-factor

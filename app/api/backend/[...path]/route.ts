@@ -57,9 +57,13 @@ async function proxy(req: NextRequest, segments: string[]): Promise<NextResponse
     upstream = await fetch(dest, init);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    const localTarget = /127\.0\.0\.1|localhost/i.test(base);
+    const hint = localTarget
+      ? " Local: start FastAPI in another terminal: `bash backend/run-api.sh` (from repo root), leave it running, then retry."
+      : " Set BACKEND_URL (or NEXT_PUBLIC_API_URL) to your live FastAPI HTTPS base URL (required on Vercel; cannot use localhost there).";
     return NextResponse.json(
       {
-        detail: `Cannot reach API at ${base} (${msg}). Set BACKEND_URL (or NEXT_PUBLIC_API_URL) in the host environment to your live FastAPI HTTPS URL.`,
+        detail: `Cannot reach API at ${base} (${msg}).${hint}`,
       },
       { status: 502 },
     );

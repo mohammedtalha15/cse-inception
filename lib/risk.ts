@@ -36,13 +36,13 @@ export function timeToLowMinutes(
 
 export function riskBucket(score: number): "safe" | "watch" | "alert" {
   if (score <= 30) return "safe";
-  if (score <= 60) return "watch";
+  if (score < 40) return "watch";
   return "alert";
 }
 
 export function alertTypeFromScore(score: number): "stable" | "early" | "critical" {
   if (score <= 30) return "stable";
-  if (score <= 60) return "early";
+  if (score < 40) return "early";
   return "critical";
 }
 

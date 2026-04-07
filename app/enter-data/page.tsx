@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { EnterVitalsForm } from "@/components/enter-vitals-form";
+import { DiabetesModelCheatSheet } from "@/components/diabetes-model-cheat-sheet";
+import { DeployBackendBanner } from "@/components/deploy-backend-banner";
 import { ArrowLeft, HeartPulse } from "lucide-react";
 
 export default function EnterDataPage() {
@@ -22,11 +24,20 @@ export default function EnterDataPage() {
             Log vitals
           </h1>
         </div>
-        <p className="mb-8 font-mono text-sm leading-relaxed text-muted-foreground">
-          Enter your current readings below. Ayuq combines trend, meals, insulin, and activity into
-          a single risk score. When risk is elevated, you will see a short plain-language summary
-          powered by Google Gemini (or built-in guidance if AI is unavailable).
+        <p className="mb-6 font-mono text-sm leading-relaxed text-muted-foreground">
+          Enter the <strong className="text-foreground/90">same eight clinical fields</strong> as the
+          training dataset (Pima format — <strong className="text-foreground/90">order matters</strong>
+          ), then optionally refine with CGM-style timing. Sugarfree cross-checks with the on-server random
+          forest, blends rule-based hypoglycemia risk, and can use Gemini for explanations. Optional:
+          upload a meal photo for a rough carb estimate (vision model — not a substitute for carb
+          counting).
         </p>
+
+        <div className="mb-6">
+          <DiabetesModelCheatSheet />
+        </div>
+
+        <DeployBackendBanner />
 
         <div className="border-2 border-foreground bg-card p-6 sm:p-8">
           <EnterVitalsForm />

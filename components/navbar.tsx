@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GoogleAuthButton } from "@/components/google-auth-button";
+import { SugarCubesLogo } from "@/components/sugar-cubes-logo";
 
 const NAV_LINKS = [
-  { href: "/#problem", label: "Why Ayuq" },
+  { href: "/#problem", label: "Why Sugarfree" },
   { href: "/#product", label: "Product" },
   { href: "/enter-data", label: "Log vitals" },
   { href: "/dashboard", label: "Live Dashboard" },
@@ -33,12 +33,12 @@ export function Navbar() {
             transition={{ delay: 0.2, duration: 0.4 }}
             className="flex shrink-0 items-center gap-3"
           >
-            <Activity size={16} strokeWidth={1.5} className="text-accent" />
+            <SugarCubesLogo className="h-4 w-4 text-accent" />
             <Link
               href="/"
               className="text-xs font-bold uppercase tracking-[0.15em] font-mono"
             >
-              AYUQ
+              SUGARFREE
             </Link>
           </motion.div>
 

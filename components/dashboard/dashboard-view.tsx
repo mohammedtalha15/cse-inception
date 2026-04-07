@@ -13,6 +13,8 @@ import { DualAiStrip } from "./dual-ai-strip";
 import { ExplainabilityPanel } from "./explainability-panel";
 import { ScenarioControls } from "./scenario-controls";
 import { RiskShell } from "./risk-shell";
+import { DoctorSharePanel } from "./doctor-share-panel";
+import { getStoredChatPatientId, setStoredChatPatientId } from "@/lib/chat-patient-id";
 
 const PATIENTS = ["P001", "P002", "P003"] as const;
 
@@ -83,12 +85,17 @@ function buildMockSeries(patientId: string, profile: ProfileContext): Reading[] 
       ml_score: d.ml_score,
       hybrid_score: d.hybrid_score,
       factors: d.factors,
-      explanation: d.hybrid_score > 60 ? "Demo fallback: elevated risk from mock stream." : null,
+      explanation: d.hybrid_score >= 40 ? "Demo fallback: elevated risk from mock stream." : null,
       alert_type: d.alert_type,
       time_to_low_minutes: d.time_to_low_minutes,
     });
   }
   return out;
+}
+
+function normalizePatientId(raw: string): string {
+  const t = raw.trim().toUpperCase();
+  return t || "P001";
 }
 
 export function DashboardView() {
@@ -97,6 +104,13 @@ export function DashboardView() {
   const [live, setLive] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [lastFetchAt, setLastFetchAt] = useState<Date | null>(null);
+
+  /** Same patient ID as Log vitals (stored when you submit the form). */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = getStoredChatPatientId();
+    setPatientId(stored);
+  }, []);
 
   const load = useCallback(async () => {
     let savedProfile: ProfileContext = null;
@@ -129,11 +143,13 @@ export function DashboardView() {
     }
   }, [patientId]);
 
-  useEffect(() => {
+  function applyPatientIdFromInput(raw: string) {
+    const next = normalizePatientId(raw);
+    setPatientId(next);
     if (typeof window !== "undefined") {
-      localStorage.setItem("ayuq_chat_patient_id", patientId);
+      setStoredChatPatientId(next);
     }
-  }, [patientId]);
+  }
 
   useEffect(() => {
     const tick = () => {
@@ -147,6 +163,16 @@ export function DashboardView() {
     });
     const id = setInterval(() => queueMicrotask(() => tick()), 8000);
     return () => clearInterval(id);
+  }, [load]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        queueMicrotask(() => void load());
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
   }, [load]);
 
   const latest = useMemo(() => {
@@ -194,8 +220,8 @@ export function DashboardView() {
                   Trend, meals, insulin, activity, and hybrid risk — with minutes-to-threshold and
                   factor breakdown. Updates about every 5 seconds.
                   <span className="mt-2 block text-[10px] text-foreground/90">
-                    Active patient: <strong className="text-foreground">{patientId}</strong> — use
-                    the same ID when you log vitals so new readings show here.
+                    Active patient matches <strong className="text-foreground">Log vitals</strong>{" "}
+                    (saved in this browser). Use the exact same patient ID when submitting readings.
                   </span>
                   {lastFetchAt && (
                     <span className="mt-1 block text-[10px] text-muted-foreground/90">
@@ -205,12 +231,37 @@ export function DashboardView() {
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col items-stretch gap-3 sm:items-end">
+              <label className="flex w-full max-w-[16rem] flex-col gap-1 sm:max-w-56">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                  Patient ID
+                </span>
+                <input
+                  type="text"
+                  value={patientId}
+                  onChange={(e) => setPatientId(e.target.value.toUpperCase())}
+                  onBlur={(e) => applyPatientIdFromInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  className="form-input py-2 font-mono text-xs"
+                  autoComplete="off"
+                  aria-label="Patient ID for dashboard"
+                />
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
               {PATIENTS.map((p) => (
                 <button
                   key={p}
                   type="button"
-                  onClick={() => setPatientId(p)}
+                  onClick={() => {
+                    setPatientId(p);
+                    if (typeof window !== "undefined") {
+                      setStoredChatPatientId(p);
+                    }
+                  }}
                   className={`border-2 px-4 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors ${
                     patientId === p
                       ? "border-foreground bg-foreground text-background"
@@ -224,6 +275,7 @@ export function DashboardView() {
                 <Radio size={12} className={live ? "text-green-500" : "text-amber-500"} />
                 {live ? "API" : "Mock"}
               </span>
+              </div>
             </div>
           </div>
           {apiError && (
@@ -329,12 +381,13 @@ export function DashboardView() {
           </div>
 
           <ScenarioControls patientId={patientId} />
+          <DoctorSharePanel patientId={patientId} />
 
           <section className="border border-dashed border-border bg-muted/10 p-6 font-mono text-[10px] uppercase leading-relaxed tracking-widest text-muted-foreground">
             <p className="text-foreground">Real-world hooks (demo narrative)</p>
             <p className="mt-2">
               CGM streams (Dexcom / Libre), pumps, wearables, and Apple Health can feed the same{" "}
-              <span className="text-foreground">POST /reading</span> schema — Ayuq stays
+              <span className="text-foreground">POST /reading</span> schema — Sugarfree stays
               device-agnostic at the API layer.
             </p>
           </section>

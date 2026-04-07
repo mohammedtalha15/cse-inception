@@ -101,14 +101,14 @@ const TIERS: Tier[] = [
   {
     id: "clinical",
     name: "CARE_TEAM",
-    price: "149",
+    price: "999",
     period: "/ month",
     tag: "RECOMMENDED",
     description: "Alerts, AI narratives on high risk, and profile capture for real workflows.",
     features: [
       { text: "Everything in Observer", included: true },
       { text: "GET /alerts + explain cards", included: true },
-      { text: "Gemini when risk > 60", included: true },
+      { text: "Gemini when risk > 50", included: true },
       { text: "POST /profile habits", included: true },
       { text: "Email / webhook hooks", included: true },
       { text: "On-prem option", included: false },
@@ -177,7 +177,7 @@ function PricingCard({ tier, index }: { tier: Tier; index: number }) {
             <span className="font-mono text-3xl font-bold tracking-tight lg:text-4xl">CUSTOM</span>
           ) : (
             <span className="text-3xl lg:text-4xl">
-              <ScramblePrice target={tier.price} prefix="$" />
+              <ScramblePrice target={tier.price} prefix="₹" />
             </span>
           )}
           {tier.period && (
@@ -292,7 +292,7 @@ export function PricingSection() {
       >
         <div className="flex max-w-lg flex-col gap-3">
           <h2 className="text-balance font-mono text-2xl font-bold uppercase tracking-tight text-foreground lg:text-3xl">
-            Pick how you run Ayuq
+            Pick how you run Sugarfree
           </h2>
           <p className="font-mono text-xs leading-relaxed text-muted-foreground lg:text-sm">
             Same core engine — simulator, hybrid risk, optional Gemini layer — packaged for demos,
